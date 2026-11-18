@@ -65,11 +65,12 @@ mf_out = conv(rx_bb, ones(sps,1)/sps, 'same');
 
 %% ===== 4. Dong bo khung =====
 % Dong bo: tuong quan cheo voi preamble da biet (+-1, thuc), quet qua luoi CFO
-% ung vien truoc. Ly do: tuong quan coherent tren ca 50 ky hieu preamble se tu
-% trieu tieu khi CFO that > ~1/(2*50ms) = 10Hz (pha troi het mot vong qua cua so),
-% lam khoa nham dinh cham du "do tin cay" bao cao van cao. Quet tho +-500Hz (buoc
-% 15Hz) roi lay cap (do tre, CFO) cho dinh tuong quan cao nhat; CFO chinh xac
-% duoc tinh lai ben duoi sau khi da khoa dung.
+% ung vien truoc. Ly do: tuong quan coherent tren ca 50 ky hieu preamble (T = 50 ms
+% o 1000 baud) bi co lai khi co CFO: lech 1/(2T) = 10 Hz con 64% dinh, lech 1/T = 20 Hz
+% thi pha troi het mot vong qua cua so -> dinh ve 0; CFO that tren cap (~ -24 Hz) chi
+% con 16% -> de khoa nham dinh cham du "do tin cay" bao cao van cao. Quet tho +-500Hz
+% (buoc 15Hz -> lech toi da 7.5 Hz, dinh con >= 78%) roi lay cap (do tre, CFO) cho dinh
+% tuong quan cao nhat; CFO chinh xac duoc tinh lai ben duoi sau khi da khoa dung.
 % 52:72 tim index cua `preamble` trong `mf_out`
 preamble_sym = 2*preamble_bits - 1; % bit cua preamble -> ky hieu preamble
 preamble_ref = repelem(preamble_sym, sps).';% ky hieu preamble -> mau preamble
