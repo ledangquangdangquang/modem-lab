@@ -57,9 +57,10 @@ Vì Tx phát xung vuông dài đúng `sps` mẫu, bộ lọc phối hợp tối 
 mẫu giữa symbol.
 
 ### 2.3 Đồng bộ khung: tương quan chéo, quét CFO trước
-Nếu tương quan trực tiếp với preamble mà chưa bù CFO, một lệch tần mang thật > ~10 Hz
-đã đủ làm pha trôi hết 1 vòng trong lúc tương quan trên 50 symbol (~50 ms) → tương quan
-tự triệt tiêu, khoá nhầm dù độ tin cậy báo cao. Giải pháp: quét lưới CFO ứng viên
+Nếu tương quan trực tiếp với preamble mà chưa bù CFO, pha trôi dần trong lúc tương quan
+trên 50 symbol (~50 ms) nên đỉnh co lại: lệch 10 Hz còn 64% đỉnh, lệch 20 Hz thì pha trôi
+hết 1 vòng → đỉnh về 0; CFO thật trên cáp (≈ −22 Hz) chỉ còn ~9% → khoá nhầm dù độ tin
+cậy báo cao. Giải pháp: quét lưới CFO ứng viên
 `-500:15:500 Hz`, với mỗi ứng viên bù xoay pha rồi `xcorr` với bản preamble ±1 đã
 upsample; chọn cặp (độ trễ, CFO thô) cho đỉnh tương quan lớn nhất.
 - `start_idx` = vị trí mẫu bắt đầu preamble tìm được.

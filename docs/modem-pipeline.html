@@ -5498,7 +5498,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Rx: đồng bộ + ước lượng CFO</h3>
         </div>
         <ul>
-          <li>&bull; Quét lưới CFO ứng viên -500:15:500Hz, mỗi ứng viên bù xoay pha rồi xcorr với preamble ±1 — tránh tương quan tự triệt tiêu khi CFO thật &gt; ~10Hz trên 50ms preamble</li>
+          <li>&bull; Quét lưới CFO ứng viên -500:15:500Hz, mỗi ứng viên bù xoay pha rồi xcorr với preamble ±1 — với preamble 50ms, chưa bù CFO thì đỉnh tương quan còn 64% ở 10Hz, về 0 ở 20Hz, chỉ còn 9–16% ở CFO thật −22…−24Hz</li>
           <li>&bull; start_idx = độ trễ cho đỉnh tương quan lớn nhất; sync_confidence = peak/median(|c|) đo độ chắc chắn khoá đúng preamble</li>
           <li>&bull; CFO chính xác: lệch pha giữa 2 symbol liên tiếp trong đúng đoạn preamble đã khoá (không unwrap+polyfit cả cụm — 1 mẫu nhiễu trên cáp thật dễ làm unwrap nhảy sai 2π)</li>
           <li>&bull; cfo_hz = trung bình vector các lệch pha / (2π·sps/Fs); bù xoay pha cho mf_out từ start_idx trở đi</li>
