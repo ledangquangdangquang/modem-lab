@@ -1,0 +1,631 @@
+<meta charset="utf-8">
+<title>Hỏi đáp Modem Âm thanh</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap&subset=vietnamese">
+<style>
+/* Bố cục: cột mục lục cố định bên trái + cột đọc hẹp; mỗi lượt nói là một hàng [nhãn người nói | lời] */
+:root {
+  --bg: #f3f5f7; --surface: #ffffff; --ink: #18202b; --muted: #5b6676; --line: #d9dfe6;
+  --thay: #0e6b70; --thay-tint: #e6f2f2; --tro: #7a3e9d; --tro-tint: #f4edf8; --warn: #9a5200; --warn-tint: #fbf1e4;
+  --f-text: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161c; --surface: #18202a; --ink: #e6ebf0; --muted: #9aa6b4; --line: #2b3643;
+  --thay: #5cc4c9; --thay-tint: #142c2e; --tro: #cba4e5; --tro-tint: #261d30; --warn: #e6a04a; --warn-tint: #2d2214;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #18202a; --ink: #e6ebf0; --muted: #9aa6b4; --line: #2b3643;
+  --thay: #5cc4c9; --thay-tint: #142c2e; --tro: #cba4e5; --tro-tint: #261d30; --warn: #e6a04a; --warn-tint: #2d2214;
+  color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font: 16px/1.65 var(--f-text);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 40px 80px; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 48px; }
+header.top { grid-column: 1 / -1; display: grid; gap: 12px; max-width: 760px; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--thay); }
+h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.12; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.lede { color: var(--muted); font-size: 18px; margin: 0; max-width: 65ch; }
+.cast { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 14px; color: var(--muted); }
+.cast b { color: var(--ink); }
+
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; font-size: 14px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: s -1; }
+nav.toc li { counter-increment: s; }
+nav.toc a { display: grid; grid-template-columns: 26px 1fr; gap: 4px; padding: 4px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+nav.toc a::before { content: counter(s, decimal-leading-zero); font: 12px/1.9 var(--f-mono); color: var(--muted); opacity: .7; }
+nav.toc a:hover, nav.toc a:focus-visible { background: var(--surface); color: var(--ink); outline: none; }
+nav.toc .tt { font: 600 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; margin: 0 0 10px 8px; color: var(--muted); }
+
+main { min-width: 0; max-width: 760px; display: grid; gap: 72px; }
+section { display: grid; gap: 18px; scroll-margin-top: 20px; }
+section > h2 { margin: 0; font-size: 26px; line-height: 1.25; text-wrap: balance; display: flex; gap: 14px; align-items: baseline; }
+section > h2 .n { font: 600 14px/1 var(--f-mono); color: var(--thay); flex: none; }
+.where { font: 13px/1.4 var(--f-mono); color: var(--muted); margin-top: -10px; }
+
+.turn { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; }
+.who { font: 600 12px/2.2 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; display: flex; gap: 6px; align-items: baseline; }
+.who::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; transform: translateY(-1px); }
+.tro .who { color: var(--tro); }
+.thay .who { color: var(--thay); }
+.say { min-width: 0; }
+.say > p { margin: 0 0 10px; }
+.say > p:last-child { margin-bottom: 0; }
+.tro .say { background: var(--tro-tint); padding: 10px 16px; border-radius: 4px 14px 14px 14px; }
+.tro .say p { margin: 0; }
+
+.ex { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 16px 18px; display: grid; gap: 12px; min-width: 0; margin: 4px 0 6px; }
+.ex .h { font: 600 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ex p { margin: 0; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; font: 14px/1.5 var(--f-mono); font-variant-numeric: tabular-nums; min-width: 100%; }
+th, td { text-align: left; padding: 5px 12px 5px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font: 600 12px/1.4 var(--f-text); color: var(--muted); }
+tr.on td { color: var(--thay); font-weight: 600; }
+td.bad { color: var(--warn); font-weight: 600; }
+code, .m { font-family: var(--f-mono); font-size: .9em; }
+:not(pre) > code { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+pre { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font: 13.5px/1.6 var(--f-mono); }
+.key { background: var(--thay-tint); border-radius: 8px; padding: 12px 16px; }
+.key b { color: var(--thay); }
+.warnbox { background: var(--warn-tint); border-radius: 8px; padding: 12px 16px; }
+.warnbox b { color: var(--warn); }
+
+.chain { display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: center; font: 13px/1 var(--f-mono); }
+.chain span { border: 1px solid var(--line); background: var(--surface); padding: 7px 9px; border-radius: 6px; }
+.chain span.ch { border-style: dashed; color: var(--warn); }
+.chain i { color: var(--muted); font-style: normal; }
+.chain .lbl { border: 0; background: none; padding: 7px 4px 7px 0; color: var(--muted); }
+
+svg text { font-family: var(--f-mono); fill: var(--ink); }
+svg .mut { fill: var(--muted); }
+svg .ax { stroke: var(--line); stroke-width: 1.5; fill: none; }
+svg .pt { fill: var(--thay); }
+svg .ptb { fill: var(--surface); stroke: var(--thay); stroke-width: 2; }
+svg .crv { stroke: var(--thay); stroke-width: 2.5; fill: none; }
+svg .mk { fill: var(--tro); }
+svg .seg-pre { fill: var(--tro); }
+svg .seg-pil { fill: var(--thay); }
+svg .seg-dat { fill: var(--thay); opacity: .35; }
+svg .seg-pad { fill: var(--line); }
+svg .seg-hdr { fill: var(--tro); opacity: .8; }
+svg .seg-z { fill: var(--surface); stroke: var(--line); }
+svg .tail { fill: var(--warn); opacity: .35; }
+.fig { display: grid; gap: 8px; }
+.cap { font-size: 13px; color: var(--muted); }
+
+.ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ctl button { font: 600 13px/1 var(--f-mono); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.ctl button[aria-pressed="true"] { background: var(--thay); border-color: var(--thay); color: var(--surface); }
+.ctl button:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--tro); outline-offset: 2px; }
+input[type=range] { width: min(100%, 420px); accent-color: var(--thay); }
+.readout { font: 600 15px/1.4 var(--f-mono); font-variant-numeric: tabular-nums; }
+
+footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); padding-top: 18px; }
+
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-block: 24px 60px; }
+  nav.toc { position: static; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 8px; }
+  nav.toc ol { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  main { gap: 56px; }
+}
+@media (max-width: 520px) {
+  .turn { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  section > h2 { font-size: 22px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">modem-lab · Fs 48 kHz · Fc 8 kHz</div>
+    <h1>Hỏi đáp: modem âm thanh từ bit đến BER</h1>
+    <p class="lede">Một người học hỏi, một người thầy trả lời, đi đúng theo đường tín hiệu trong project: <code>Tx_qpsk</code> → điện thoại → cáp → <code>Rx_qpsk</code>, rồi sang âm thanh, QAM, kênh không khí và bản Python. Mỗi bước có một ví dụ số nhỏ tính được bằng tay.</p>
+    <div class="cast"><span><b style="color:var(--tro)">Trò</b> · đã chạy code, chưa hiểu vì sao nó chạy</span><span><b style="color:var(--thay)">Thầy</b> · trả lời bằng con số trước, công thức sau</span></div>
+  </header>
+
+  <nav class="toc" aria-label="Mục lục">
+    <p class="tt">Đường tín hiệu</p>
+    <ol>
+      <li><a href="#tong-quan">Bức tranh lớn</a></li>
+      <li><a href="#ky-hieu">Bit thành ký hiệu</a></li>
+      <li><a href="#khung">Khung phát</a></li>
+      <li><a href="#dieu-che">Xung vuông và sóng mang</a></li>
+      <li><a href="#kenh">Kênh: cáp và hai đồng hồ</a></li>
+      <li><a href="#ha-tan">Hạ tần</a></li>
+      <li><a href="#id">Integrate-and-dump</a></li>
+      <li><a href="#dong-bo">Đồng bộ và lưới CFO</a></li>
+      <li><a href="#cfo">CFO từ preamble</a></li>
+      <li><a href="#bam">Bám theo đoạn</a></li>
+      <li><a href="#zf">Pilot ZF và quyết định</a></li>
+      <li><a href="#evm">BER và EVM</a></li>
+      <li><a href="#am-thanh">Gửi âm thanh</a></li>
+      <li><a href="#qam">QAM và khung chèn 0</a></li>
+      <li><a href="#khong-khi">Qua không khí</a></li>
+      <li><a href="#python">MATLAB và Python</a></li>
+      <li><a href="#bay">Bẫy hay gặp</a></li>
+      <li><a href="#tiep">Việc tiếp theo</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <!-- 00 -->
+    <section id="tong-quan">
+      <h2><span class="n">00</span>Bức tranh lớn</h2>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Em chạy <code>Tx_qpsk</code>, copy file sang điện thoại, bấm phát, chạy <code>Rx_qpsk</code> và thấy BER = 0. Nhưng thật ra cái gì đang đi trong dây ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Trong dây chỉ có âm thanh: một sóng sin 8 kHz bị đổi pha liên tục. Laptop vừa là máy phát vừa là máy thu. Điện thoại chỉ làm một việc là phát lại file <code>.wav</code>, tức là nó đóng vai bộ chuyển số sang tương tự (DAC). Dây tai nghe đưa âm thanh đó vào cổng mic của laptop.</p>
+        <p>Có bốn con số cần nhớ trước khi đi tiếp:</p>
+        <div class="ex"><div class="h">Bốn hằng số của Tx_qpsk.m</div>
+          <div class="scroll"><table>
+            <tr><th>Tên</th><th>Giá trị</th><th>Nghĩa</th></tr>
+            <tr><td>Fs</td><td>48000</td><td>mẫu mỗi giây của file .wav</td></tr>
+            <tr><td>Fc</td><td>8000 Hz</td><td>tần số sóng mang, nằm giữa dải nghe được</td></tr>
+            <tr><td>baud_rate</td><td>1000</td><td>ký hiệu mỗi giây, nên mỗi ký hiệu dài 1 ms</td></tr>
+            <tr><td>sps</td><td>48</td><td>Fs / baud_rate: số mẫu tạo nên một ký hiệu</td></tr>
+          </table></div>
+        </div>
+        <p>Trong suốt trang này thầy phân biệt hai từ. <b>Mẫu</b> là một số trong mảng chạy ở tốc độ Fs, ví dụ <code>rx_raw(n)</code>. <b>Ký hiệu</b> là một đơn vị thông tin dài <code>sps</code> mẫu, ví dụ một điểm QPSK. Một ký hiệu gồm 48 mẫu.</p>
+        <p>Toàn bộ đường đi trông như sau. Phần nét đứt là thứ ta không điều khiển được.</p>
+        <div class="chain" aria-label="Chuỗi xử lý">
+          <span class="lbl">Tx</span><span>bit</span><i>→</i><span>ký hiệu QPSK</span><i>→</i><span>khung</span><i>→</i><span>xung vuông × sóng mang</span><i>→</i><span>.wav</span><i>→</i>
+          <span class="ch">điện thoại</span><i>→</i><span class="ch">cáp</span><i>→</i><span class="ch">ADC laptop</span><i>→</i>
+          <span class="lbl">Rx</span><span>hạ tần</span><i>→</i><span>integrate-and-dump</span><i>→</i><span>đồng bộ + lưới CFO</span><i>→</i><span>CFO preamble</span><i>→</i><span>bám đoạn M=10</span><i>→</i><span>pilot ZF</span><i>→</i><span>quyết định</span><i>→</i><span>BER, EVM</span>
+        </div>
+      </div></div>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Sao lại chọn 8 kHz ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Mạch âm thanh của điện thoại và laptop cho qua khoảng 20 Hz đến 20 kHz. Xung vuông ở 1000 baud có búp phổ chính rộng ±1 kHz quanh sóng mang, nên 7–9 kHz nằm gọn trong dải đó. Ở 4000 baud thì búp rộng ±4 kHz, thành 4–12 kHz, vẫn lọt. Fs = 48 kHz là tần số chuẩn mà cả hai máy đều hỗ trợ, và 48 chia hết cho cả 1000 lẫn 4000 nên <code>sps</code> là số nguyên.</p>
+      </div></div>
+    </section>
+
+    <!-- 01 -->
+    <section id="ky-hieu">
+      <h2><span class="n">01</span>Bit thành ký hiệu</h2>
+      <p class="where">Tx_qpsk.m dòng 18 · Tx.m dòng 24</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>BPSK thì em hiểu: bit 0 thành −1, bit 1 thành +1. QPSK thì ghép hai bit kiểu gì ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Bit thứ nhất quyết định phần thực I, bit thứ hai quyết định phần ảo Q, mỗi bit theo đúng luật của BPSK: <code>I = 2·b1 − 1</code>, <code>Q = 2·b2 − 1</code>. Sau đó chia cho √2 để mọi điểm có độ lớn bằng 1. Viết theo dạng độ lớn∠góc thì bốn điểm là:</p>
+        <div class="fig">
+          <div class="scroll"><svg viewBox="0 0 520 300" width="520" height="300" role="img" aria-label="Chòm sao QPSK với bốn điểm và nhãn bit">
+            <line class="ax" x1="40" y1="150" x2="480" y2="150"/><line class="ax" x1="260" y1="20" x2="260" y2="280"/>
+            <text x="486" y="154" class="mut" font-size="13">I</text><text x="266" y="28" class="mut" font-size="13">Q</text>
+            <circle class="ax" cx="260" cy="150" r="110" stroke-dasharray="4 5"/>
+            <circle class="pt" cx="338" cy="72" r="8"/><text x="352" y="66" font-size="14">11 · 1∠45°</text>
+            <circle class="pt" cx="182" cy="72" r="8"/><text x="58" y="66" font-size="14">01 · 1∠135°</text>
+            <circle class="pt" cx="182" cy="228" r="8"/><text x="46" y="246" font-size="14">00 · 1∠−135°</text>
+            <circle class="pt" cx="338" cy="228" r="8"/><text x="352" y="246" font-size="14">10 · 1∠−45°</text>
+            <text x="268" y="168" class="mut" font-size="12">0</text>
+          </svg></div>
+          <p class="cap">Hai điểm cạnh nhau (lệch 90°) chỉ khác nhau một bit. Đó là mã Gray.</p>
+        </div>
+        <p>Vì sao xếp như vậy? Nhiễu thường chỉ đẩy một điểm sang điểm <em>bên cạnh</em>, hiếm khi sang điểm đối diện. Với mã Gray, lỗi sang điểm bên cạnh chỉ hỏng 1 trong 2 bit. Bên thu cũng đơn giản: <code>b1 = real &gt; 0</code>, <code>b2 = imag &gt; 0</code>, hai phép so sánh là xong.</p>
+      </div></div>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Vậy QPSK gửi gấp đôi BPSK với cùng một tốc độ ký hiệu?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say"><p>Đúng. Cùng 1000 ký hiệu mỗi giây, cùng độ rộng phổ, nhưng mỗi ký hiệu mang 2 bit. Cái giá phải trả: BPSK chỉ cần biết <em>dấu</em>, còn QPSK cần biết <em>pha</em> chính xác hơn ±45°. Vì vậy phần bù pha ở bên thu trở nên quan trọng hơn hẳn.</p></div></div>
+    </section>
+
+    <!-- 02 -->
+    <section id="khung">
+      <h2><span class="n">02</span>Khung phát</h2>
+      <p class="where">Tx_qpsk.m dòng 10–26</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Ngoài dữ liệu, trong file còn những gì ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Có bốn phần, theo thứ tự thời gian:</p>
+        <div class="fig">
+          <div class="scroll"><svg viewBox="0 0 640 120" width="640" height="120" role="img" aria-label="Bố cục khung QPSK">
+            <rect class="seg-pad" x="10" y="30" width="90" height="34" rx="3"/><text x="22" y="52" font-size="12">lặng 0.5 s</text>
+            <rect class="seg-pre" x="104" y="30" width="70" height="34" rx="3"/><text x="110" y="52" font-size="12" style="fill:var(--surface)">preamble</text>
+            <g transform="translate(178 30)">
+              <rect class="seg-pil" x="0" y="0" width="14" height="34"/><rect class="seg-dat" x="15" y="0" width="60" height="34"/>
+              <rect class="seg-pil" x="78" y="0" width="14" height="34"/><rect class="seg-dat" x="93" y="0" width="60" height="34"/>
+              <text x="160" y="22" font-size="13" class="mut">… ×200 block</text>
+              <rect class="seg-pil" x="252" y="0" width="14" height="34"/><rect class="seg-dat" x="267" y="0" width="60" height="34"/>
+            </g>
+            <rect class="seg-pad" x="510" y="30" width="90" height="34" rx="3"/><text x="522" y="52" font-size="12">lặng 0.5 s</text>
+            <text x="104" y="86" font-size="12" class="mut">50 ký hiệu ±1</text>
+            <text x="178" y="86" font-size="12" class="mut">P = pilot 1∠45°, sau đó 5 ký hiệu dữ liệu</text>
+            <text x="178" y="104" font-size="12" class="mut">1 block = 6 ký hiệu = 288 mẫu, mang 10 bit</text>
+          </svg></div>
+        </div>
+        <div class="ex"><div class="h">Đếm thời lượng</div>
+          <p>Dữ liệu: 200 block × 10 bit = 2000 bit. Số ký hiệu: 50 + 200 × 6 = 1250 ký hiệu, ở 1 ms mỗi ký hiệu là 1.25 s. Cộng hai khoảng lặng thì file dài 2.25 s.</p>
+        </div>
+        <p><b>Khoảng lặng</b> để kịp bấm phát trên điện thoại sau khi đã bắt đầu thu. <b>Preamble</b> là chuỗi 50 bit ngẫu nhiên mà bên thu biết trước, vì Tx lưu nó trong <code>tx_params_qpsk.mat</code>. Bên thu dùng nó để tìm chỗ khung bắt đầu và đo lệch tần. <b>Pilot</b> là một ký hiệu biết trước đặt ở đầu mỗi block, dùng để đo kênh ngay tại chỗ.</p>
+      </div></div>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Sao preamble của QPSK vẫn là ±1 mà không phải điểm QPSK?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say"><p>Để phần đồng bộ và ước lượng CFO giống hệt bản BPSK, từng dòng một. Bản BPSK đã chạy đúng trên cáp thật, nên giữ nguyên nó thì khi QPSK có lỗi, ta biết ngay lỗi nằm ở phần mới chứ không phải ở phần đồng bộ.</p></div></div>
+    </section>
+
+    <!-- 03 -->
+    <section id="dieu-che">
+      <h2><span class="n">03</span>Xung vuông và sóng mang</h2>
+      <p class="where">Tx_qpsk.m dòng 28–37</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Dòng <code>passband = real(baseband .* exp(1j*2*pi*Fc*t))</code> làm gì ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Trước đó, <code>repelem(symbols, sps)</code> lặp mỗi ký hiệu thành 48 mẫu giống nhau. Đó là xung vuông. Sau đó mỗi mẫu được nhân với một kim đồng hồ quay đều 1∠(2π·Fc·t) rồi lấy phần thực. Nhân hai số phức nghĩa là nhân độ lớn và cộng góc, nên kết quả là một sóng cos có pha bằng pha của ký hiệu: <code>cos(2πFc·t + θ)</code>. Viết dài ra thì đó là <code>I·cos − Q·sin</code>.</p>
+        <div class="ex"><div class="h">Ví dụ tính tay: sps = 4, Fc = Fs/4</div>
+          <p>Chọn Fc bằng một phần tư Fs thì kim sóng mang quay đúng 90° mỗi mẫu. Gửi ký hiệu 1∠45° (bit 11):</p>
+          <div class="scroll"><table>
+            <tr><th>mẫu n</th><th>góc 45° + 90°·n</th><th>passband = cos(góc)</th></tr>
+            <tr><td>0</td><td>45°</td><td>0.707</td></tr>
+            <tr><td>1</td><td>135°</td><td>−0.707</td></tr>
+            <tr><td>2</td><td>225°</td><td>−0.707</td></tr>
+            <tr><td>3</td><td>315°</td><td>0.707</td></tr>
+          </table></div>
+          <p>Ký hiệu tiếp theo là 1∠135° (bit 01). Các mẫu 4–7 cho −0.707, −0.707, 0.707, 0.707: cùng một sóng nhưng dịch 90°. Thông tin nằm ở <em>chỗ sóng bắt đầu</em>, không nằm ở độ to.</p>
+        </div>
+        <p>Cuối cùng, tín hiệu được chuẩn hoá về đỉnh 0.9 để không bị cắt ngọn, rồi ghi thành <code>.wav</code> 16 bit.</p>
+      </div></div>
+    </section>
+
+    <!-- 04 -->
+    <section id="kenh">
+      <h2><span class="n">04</span>Kênh: cáp và hai đồng hồ</h2>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Dây cáp thì có gì làm hỏng tín hiệu ạ? Không có vang dội như ngoài không khí mà.</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Cáp không có đa đường. Nhưng có một thứ khó chịu hơn: <b>hai máy dùng hai đồng hồ khác nhau</b>. Điện thoại tưởng nó phát ở 48000 mẫu/giây, laptop tưởng nó thu ở 48000 mẫu/giây, nhưng thực tế hai con số đó lệch nhau khoảng 0.3%. Một lệch đó sinh ra <em>hai</em> triệu chứng:</p>
+        <p><b>Lệch tần sóng mang (CFO).</b> Sóng mang 8000 Hz đến laptop thành khoảng 7976 Hz, tức CFO ≈ −24 Hz. Sau khi hạ tần, mọi điểm chòm sao cứ quay dần.</p>
+        <p><b>Trôi thời điểm lấy mẫu.</b> Mỗi ký hiệu dài ra một chút, nên vị trí ký hiệu thứ k trôi dần khỏi chỗ dự đoán.</p>
+        <div class="ex"><div class="h">Một nguyên nhân, hai con số</div>
+          <p>Sóng mang đo được là Fc/(1 + drift) = Fc + cfo, suy ra <code>drift = −cfo / (Fc + cfo)</code>.</p>
+          <div class="scroll"><table>
+            <tr><th>Đại lượng</th><th>Phép tính</th><th>Kết quả</th></tr>
+            <tr><td>drift</td><td>24 / (8000 − 24)</td><td>0.30 %</td></tr>
+            <tr><td>độ dài 200 block</td><td>200 × 288 mẫu</td><td>57600 mẫu</td></tr>
+            <tr><td>trôi cuối khung</td><td>0.0030 × 57600</td><td>173 mẫu ≈ 3.6 ký hiệu</td></tr>
+            <tr><td>đo thật</td><td>pilot block 1 → block 200</td><td>4 → 179 mẫu</td></tr>
+          </table></div>
+        </div>
+        <p>Thêm vào đó là độ lợi và pha của cả đường truyền chưa biết, cộng nhiễu. Đó là lý do bên thu cần cả đo CFO lẫn bám thời điểm, không chỉ cắt ngưỡng.</p>
+      </div></div>
+    </section>
+
+    <!-- 05 -->
+    <section id="ha-tan">
+      <h2><span class="n">05</span>Hạ tần</h2>
+      <p class="where">Rx_qpsk.m dòng 56–57</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Bên thu nhân <code>rx_raw</code> với <code>exp(-1j*2*pi*Fc*t)</code>. Thế là lấy lại được ký hiệu ngay ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Chưa. Phép nhân đó quay ngược kim sóng mang, nên ký hiệu dịch về 0 Hz. Nhưng sóng thật là số thực, và một sóng cos là tổng của hai kim quay ngược chiều nhau. Kim thứ hai bị dịch xuống −2Fc, gọi là <b>ảnh</b>. Vậy <code>rx_bb = s/2 + (ảnh quay ở −16 kHz)</code>.</p>
+        <div class="ex"><div class="h">Tiếp ví dụ sps = 4: nhân với 1∠(−90°·n)</div>
+          <div class="scroll"><table>
+            <tr><th>n</th><th>passband</th><th>× 1∠(−90°·n)</th><th>rx_bb(n)</th></tr>
+            <tr><td>0</td><td>0.707</td><td>1∠0°</td><td>0.707∠0°</td></tr>
+            <tr><td>1</td><td>−0.707</td><td>1∠−90°</td><td>0.707∠90°</td></tr>
+            <tr><td>2</td><td>−0.707</td><td>1∠−180°</td><td>0.707∠0°</td></tr>
+            <tr><td>3</td><td>0.707</td><td>1∠−270°</td><td>0.707∠90°</td></tr>
+          </table></div>
+          <p>Ta gửi 1∠45°, nhưng không mẫu nào có góc 45°. Từng mẫu là tổng của phần cần lấy 0.5∠45° và phần ảnh 0.5∠(−45° − 180°·n). Phần ảnh đảo chiều sau mỗi mẫu.</p>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- 06 -->
+    <section id="id">
+      <h2><span class="n">06</span>Integrate-and-dump</h2>
+      <p class="where">Rx_qpsk.m dòng 64 · <code>mf_out = conv(rx_bb, ones(sps,1)/sps, 'same')</code></p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Vậy làm sao bỏ được phần ảnh ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Lấy trung bình đúng một ký hiệu. Phần cần lấy đứng yên nên trung bình vẫn là chính nó. Phần ảnh quay đủ vòng trong một ký hiệu nên cộng lại bằng 0. Đây cũng là bộ lọc phối hợp cho xung vuông, nên nó cho SNR tốt nhất. Nhưng chỉ đúng khi cửa sổ <em>trùng khít</em> ký hiệu. Thử dịch cửa sổ xem:</p>
+        <div class="ex"><div class="h">Thử: dịch cửa sổ trung bình</div>
+          <div class="ctl" role="group" aria-label="Độ lệch cửa sổ">
+            <button type="button" id="w0" aria-pressed="true">lệch 0 mẫu</button>
+            <button type="button" id="w1" aria-pressed="false">lệch 1 mẫu</button>
+            <button type="button" id="w2" aria-pressed="false">lệch 2 mẫu</button>
+          </div>
+          <div class="scroll"><table id="idtab">
+            <tr><th>n</th><th>thuộc ký hiệu</th><th>rx_bb(n)</th></tr>
+            <tr><td>0</td><td>1∠45°</td><td>0.707∠0°</td></tr>
+            <tr><td>1</td><td>1∠45°</td><td>0.707∠90°</td></tr>
+            <tr><td>2</td><td>1∠45°</td><td>0.707∠0°</td></tr>
+            <tr><td>3</td><td>1∠45°</td><td>0.707∠90°</td></tr>
+            <tr><td>4</td><td>1∠135°</td><td>0.707∠180°</td></tr>
+            <tr><td>5</td><td>1∠135°</td><td>0.707∠90°</td></tr>
+          </table></div>
+          <p class="readout" id="idout" aria-live="polite"></p>
+        </div>
+        <p>Khi cửa sổ khớp, kết quả là 0.5∠45°: đúng góc, độ lớn bằng một nửa. Phần "một nửa" và độ lợi của kênh sẽ được pilot bù sau. Khi lệch 1 mẫu, kết quả là 0.354∠90°, vì cửa sổ đã trộn hai ký hiệu và phần ảnh không triệt hết. Vì vậy bên thu phải tìm đúng <em>mẫu giữa</em> của mỗi ký hiệu, và phần bám thời điểm ở các bước sau tồn tại là vì lý do này.</p>
+      </div></div>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Mẫu giữa là sao ạ? Trung bình thì đâu có giữa?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say"><p><code>conv(..., 'same')</code> đặt kết quả của cửa sổ vào mẫu ở giữa cửa sổ. Vì thế <code>mf_out(n)</code> đúng nhất khi n nằm giữa ký hiệu, tức ở vị trí <code>(k−1)·sps + round(sps/2)</code> tính từ đầu ký hiệu. Công thức này xuất hiện ở khắp <code>Rx_qpsk.m</code>.</p></div></div>
+    </section>
+
+    <!-- 07 -->
+    <section id="dong-bo">
+      <h2><span class="n">07</span>Đồng bộ và lưới CFO</h2>
+      <p class="where">Rx_qpsk.m dòng 74–95</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Tìm preamble bằng tương quan chéo thì em hiểu. Nhưng sao phải lặp 67 lần với các CFO khác nhau ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Tương quan là cộng 50 ký hiệu preamble sau khi đã nhân với dấu đã biết. Nếu không có CFO, 50 vector cùng hướng và tổng là lớn nhất. Có CFO thì vector thứ k bị quay thêm một góc tỉ lệ với k, nên 50 vector toả ra như nan quạt và tổng bị co lại. Kéo thử:</p>
+        <div class="ex"><div class="h">Thử: độ cao đỉnh tương quan theo CFO (preamble 50 ký hiệu, 1000 baud)</div>
+          <label for="cfo" class="cap">Độ lệch tần chưa bù (Hz)</label>
+          <input type="range" id="cfo" min="0" max="40" step="0.5" value="24">
+          <p class="readout" id="cfoout" aria-live="polite"></p>
+          <div class="scroll"><svg id="cfosvg" viewBox="0 0 520 200" width="520" height="200" role="img" aria-label="Đường cong độ cao đỉnh tương quan theo CFO">
+            <line class="ax" x1="44" y1="170" x2="500" y2="170"/><line class="ax" x1="44" y1="20" x2="44" y2="170"/>
+            <text x="8" y="26" font-size="12" class="mut">100%</text><text x="20" y="174" font-size="12" class="mut">0</text>
+            <text x="40" y="190" font-size="12" class="mut">0</text><text x="148" y="190" font-size="12" class="mut">10</text><text x="262" y="190" font-size="12" class="mut">20</text><text x="376" y="190" font-size="12" class="mut">30</text><text x="482" y="190" font-size="12" class="mut">40 Hz</text>
+            <path id="cfocurve" class="crv" d=""/>
+            <circle id="cfomk" class="mk" r="6" cx="0" cy="0"/>
+          </svg></div>
+        </div>
+        <p>Preamble dài 50 ms. Lệch 10 Hz thì đỉnh chỉ còn 64%. Lệch 20 Hz thì các vector quay đủ một vòng và đỉnh về 0. Lệch thật trên cáp là −24 Hz, và ở đó đỉnh chỉ còn 16%. Khi đó một đỉnh giả ở chỗ khác có thể cao hơn, và ta khoá sai khung.</p>
+        <p>Cách chữa: trước khi tương quan, quay ngược <code>mf_out</code> theo từng giá trị thử trong lưới <code>−500:15:500</code> Hz, rồi giữ cặp (vị trí, CFO) có đỉnh cao nhất. Bước lưới 15 Hz nên CFO thật cách điểm lưới gần nhất tối đa 7.5 Hz, tức đỉnh còn ít nhất 78%. Thế là đủ để khoá đúng. CFO chính xác sẽ đo lại ở bước sau.</p>
+      </div></div>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Code in ra "peak/median = 267766". Số này to là tốt ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say"><p>Ý tưởng là đỉnh thật phải nhô hẳn lên so với mức nền. Nhưng bản thu có những đoạn im lặng tuyệt đối, toàn số 0, nên trung vị gần bằng 0 và tỉ số phình lên vô nghĩa. Đừng tin con số đó. Hãy tin BER.</p></div></div>
+    </section>
+
+    <!-- 08 -->
+    <section id="cfo">
+      <h2><span class="n">08</span>CFO từ preamble</h2>
+      <p class="where">Rx_qpsk.m dòng 102–110</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Khoá được khung rồi thì đo CFO chính xác thế nào ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Lấy mẫu giữa của 50 ký hiệu preamble, nhân với dấu ±1 đã biết. Nếu không có CFO thì cả 50 số cùng góc. Có CFO thì góc tăng đều một bước sau mỗi ký hiệu. Đo bước đó bằng <code>z(k)·conj(z(k−1))</code>: nhân với số liên hợp nghĩa là <em>trừ</em> góc.</p>
+        <div class="ex"><div class="h">Ví dụ: CFO = −24 Hz</div>
+          <p>Bước góc mỗi ký hiệu = 360° × cfo × sps / Fs = 360° × (−24) × 48 / 48000 = <b>−8.64°</b>.</p>
+          <div class="scroll"><table>
+            <tr><th>k</th><th>z(k)</th><th>z(k)·conj(z(k−1))</th></tr>
+            <tr><td>1</td><td>0.3∠20.00°</td><td></td></tr>
+            <tr><td>2</td><td>0.3∠11.36°</td><td>0.09∠−8.64°</td></tr>
+            <tr><td>3</td><td>0.3∠2.72°</td><td>0.09∠−8.64°</td></tr>
+          </table></div>
+          <p>Đảo ngược công thức: <code>cfo = góc / (2π·sps/Fs)</code> = −8.64° / (360° × 48/48000) = −24 Hz.</p>
+        </div>
+        <p>Có hai chi tiết. Thứ nhất, code lấy góc của <em>trung bình các vector</em> (<code>angle(mean(diffs))</code>) chứ không lấy trung bình các góc, vì góc 179° và −179° trung bình thành 0°, sai hoàn toàn, còn vector thì không bị vậy. Thứ hai, code không nối pha cả 50 điểm bằng <code>unwrap</code> rồi <code>polyfit</code>. Trên cáp thật chỉ cần một mẫu méo là <code>unwrap</code> nhảy sai 2π, và đường thẳng đọc ra một CFO giả rất lớn. Mỗi hiệu pha đơn lẻ thì tự nằm trong ±180° nên không có rủi ro đó.</p>
+        <p>Bản thu QPSK hiện tại đọc ra −21.57 Hz ở bước này.</p>
+      </div></div>
+    </section>
+
+    <!-- 09 -->
+    <section id="bam">
+      <h2><span class="n">09</span>Bám theo đoạn</h2>
+      <p class="where">Rx_qpsk.m dòng 121–160 · M = 10, win = 2</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Có CFO từ preamble rồi, sao không dùng luôn cho cả khung ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Bản đầu tiên làm đúng như vậy, và nó hỏng với khung dài. Trên khung âm thanh 10.6 s, CFO là −24 Hz trong khoảng 2.6 s đầu rồi nhảy về gần 0. Hiện tượng này lặp lại trên hai bản thu. Tỉ lệ đồng hồ của điện thoại <em>thay đổi giữa khung</em>. Tinh chỉnh một CFO cho cả khung bị trôi từ −25 Hz đến −48 Hz và cho BER 0.499.</p>
+        <p>Cách hiện tại: chia khung thành từng đoạn 10 block. Với mỗi đoạn:</p>
+        <p><b>a. Đoán vị trí pilot.</b> Từ CFO hiện tại suy ra drift, rồi tính <code>p = p0 + (0:m−1)·288·(1+drift)</code>.</p>
+        <p><b>b. Tinh chỉnh CFO bằng độ dốc pha pilot.</b> Quay ngược CFO hiện tại, chia cho pilot đã biết, nối pha, rồi <code>polyfit</code> một đường thẳng theo số mẫu. Độ dốc còn dư chính là sai số CFO. Làm hai lượt. Ở đây dùng <code>unwrap</code> thì an toàn, vì chỉ có 10 điểm cách nhau xa, CFO đã gần đúng, và sai số chỉ nhân lên trong 10 block chứ không phải cả khung.</p>
+        <div class="ex"><div class="h">Ví dụ: pha pilot tăng 3° mỗi block</div>
+          <p>Một block = 288 mẫu. Độ dốc 3°/288 mẫu ứng với CFO dư = (3/360) × 48000 / 288 = <b>1.39 Hz</b>. Cộng vào <code>cfo_hz</code> rồi làm lại lượt hai.</p>
+        </div>
+        <p><b>c. Chỉnh vị trí cả đoạn ±2 mẫu.</b> Thử dịch cả 10 pilot đi dd ∈ {0, −1, 1, −2, 2} mẫu và chọn dd cho <b>độ đồng pha</b> lớn nhất: <code>coh = |Σz| / Σ|z|</code>. Giá trị này bằng 1 khi mọi pilot cùng góc.</p>
+        <div class="ex"><div class="h">Ví dụ độ đồng pha với 3 pilot</div>
+          <div class="scroll"><table>
+            <tr><th>Trường hợp</th><th>z</th><th>coh</th></tr>
+            <tr><td>lấy đúng giữa</td><td>1∠10°, 1∠12°, 1∠8°</td><td>0.999</td></tr>
+            <tr><td>lệch, trộn ký hiệu bên cạnh</td><td>0.7∠10°, 0.5∠60°, 0.6∠−30°</td><td class="bad">0.823</td></tr>
+          </table></div>
+        </div>
+        <p>Thử 0 trước, nên nếu hoà thì giữ vị trí dự đoán. Sau đó <code>p0</code> được mang sang đoạn sau, cộng cả phần chỉnh <code>dbest</code>.</p>
+      </div></div>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Sao không tìm đỉnh <code>max|mf|</code> quanh pilot của từng block cho đơn giản ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say"><p>Vì pilot 1∠45° cũng là một điểm QPSK. Khi ký hiệu dữ liệu ngay cạnh pilot trùng với nó, <code>|mf|</code> phẳng trên rất nhiều mẫu và <code>max</code> chọn đại một mẫu. Ngay cả loopback không có nhiễu cũng bị lệch ±3 mẫu, tạo ra sàn EVM 4% ở sps = 48 và 15% ở sps = 12. Độ đồng pha lấy trung bình trên 10 pilot nên không bị như vậy.</p></div></div>
+    </section>
+
+    <!-- 10 -->
+    <section id="zf">
+      <h2><span class="n">10</span>Pilot ZF và quyết định</h2>
+      <p class="where">Rx_qpsk.m dòng 172–187</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Có vị trí pilot rồi, lấy bit ra thế nào ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Pilot cho biết kênh đã làm gì với một ký hiệu đã biết: <code>g = mfo(p) / pilot_sym</code>. Số phức g gói cả độ lợi lẫn pha của kênh, kể cả nửa biên độ mất ở bước hạ tần. Chia mọi ký hiệu dữ liệu trong block cho g là gỡ được cả hai. Cách này gọi là cân bằng zero-forcing.</p>
+        <div class="ex"><div class="h">Ví dụ, viết dạng độ lớn∠góc</div>
+          <div class="scroll"><table>
+            <tr><th>Bước</th><th>Giá trị</th><th>Cách tính</th></tr>
+            <tr><td>pilot thu được</td><td>0.2∠75°</td><td></td></tr>
+            <tr><td>g = pilot thu / 1∠45°</td><td>0.2∠30°</td><td>chia độ lớn, trừ góc</td></tr>
+            <tr><td>dữ liệu thu được</td><td>0.2∠165°</td><td>sau khi đã quay ngược CFO</td></tr>
+            <tr><td>eq = dữ liệu / g</td><td>1∠135°</td><td>0.2/0.2 = 1, 165° − 30°</td></tr>
+            <tr><td>quyết định</td><td>01</td><td>real &lt; 0 → b1 = 0, imag &gt; 0 → b2 = 1</td></tr>
+          </table></div>
+        </div>
+        <p>Ký hiệu dữ liệu thứ b nằm ở <code>p + b·sps + round(drift·b·sps)</code>, tức là cách pilot b ký hiệu, có cộng thêm phần trôi trong block. Trước khi chia cho g, nó được quay ngược phần CFO tích luỹ từ pilot đến đó: <code>exp(−j2π·cfo·(idx−p)/Fs)</code>.</p>
+      </div></div>
+    </section>
+
+    <!-- 11 -->
+    <section id="evm">
+      <h2><span class="n">11</span>BER và EVM</h2>
+      <p class="where">Rx_qpsk.m dòng 195–218</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>BER = 0 rồi thì cần EVM làm gì nữa ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Với 2000 bit, BER = 0 chỉ nói được BER thật nhỏ hơn khoảng 3/2000 = 1.5·10⁻³. Nó không cho biết ta còn bao nhiêu dư địa. EVM đo độ toả của các cụm điểm: <code>rms(eq − điểm gần nhất) / rms(điểm)</code>. Từ đó suy ra SNR ký hiệu ≈ −20·log₁₀(EVM).</p>
+        <div class="ex"><div class="h">Các con số đo được trong project</div>
+          <div class="scroll"><table>
+            <tr><th>Trường hợp</th><th>EVM</th><th>SNR ký hiệu</th><th>Lỗi</th></tr>
+            <tr><td>loopback</td><td>≈ 0 %</td><td>&gt; 200 dB</td><td>0</td></tr>
+            <tr><td>cáp, 1000 baud (đo trước)</td><td>6.2 %</td><td>24.2 dB</td><td>0 / 2000</td></tr>
+            <tr><td>cáp, âm thanh 4000 baud</td><td>14.6 %</td><td>16.7 dB</td><td>2 / 192000</td></tr>
+            <tr><td>cáp, bản thu QPSK hiện tại</td><td>30.3 %</td><td>10.4 dB</td><td>1 / 2000</td></tr>
+          </table></div>
+        </div>
+        <p>Ở 4000 baud, sps chỉ còn 12. Lấy mẫu ở vị trí nguyên thì sai tối đa nửa mẫu, tức 4% một ký hiệu, so với 1% khi sps = 48. Đã thử nội suy tuyến tính phân số mẫu: lỗi từ 2 xuống 0, EVM từ 14.6% xuống 12.7%, nhưng chỉ có ích ở đoạn đồng hồ trôi. Phần sàn ≈10% còn lại là nhiễu và lọc analog, nên chưa đưa nội suy vào code.</p>
+        <p>Code còn in lỗi theo từng block. Lỗi rải đều là nhiễu. Lỗi tăng dần về cuối khung là trôi đồng hồ chưa bù.</p>
+      </div></div>
+    </section>
+
+    <!-- 12 -->
+    <section id="am-thanh">
+      <h2><span class="n">12</span>Gửi âm thanh</h2>
+      <p class="where">Audio_qpsk.m · Audio_qpsk.py</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Gửi một đoạn giọng nói thì khác gửi bit ngẫu nhiên ở chỗ nào ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Modem không quan tâm bit từ đâu ra. Chỉ có hai đầu là mới: biến âm thanh thành bit, và ghép bit lại thành âm thanh.</p>
+        <div class="ex"><div class="h">Đếm cho 1 giây âm thanh</div>
+          <div class="scroll"><table>
+            <tr><th>Bước</th><th>Phép tính</th><th>Kết quả</th></tr>
+            <tr><td>lấy mẫu lại</td><td>giong.wav → mono → 8 kHz</td><td>8000 mẫu âm thanh</td></tr>
+            <tr><td>lượng tử 8 bit</td><td>round((x/max|x| + 1)/2 · 255)</td><td>số 0…255, MSB trước</td></tr>
+            <tr><td>số bit</td><td>8000 × 8</td><td>64000 bit = 6400 block</td></tr>
+            <tr><td>tốc độ thực</td><td>4000 baud × 10 bit / 6 ký hiệu</td><td>6667 bit/s</td></tr>
+            <tr><td>độ dài khung</td><td>64000 / 6667 + preamble + 1 s lặng</td><td>10.6 s</td></tr>
+          </table></div>
+        </div>
+        <p>Âm thanh được gửi cả đoạn rồi mới phát lại, không phát trực tiếp. Vì thế tốc độ bit chỉ quyết định khung dài bao lâu. Kết quả đo được: hai bản thu 1 s đều 0 / 64000 bit sai. Bản 3 s có 2 / 192000 bit sai và 2 / 24000 mẫu âm thanh sai.</p>
+      </div></div>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Hai mẫu sai thì có nghe thấy không ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say"><p>Tuỳ bit nào sai. Sai bit thấp nhất (LSB) thì mẫu lệch 1/255, không ai nghe được. Sai bit cao nhất (MSB) thì mẫu nhảy 128/255, nửa thang đo, và ta nghe một tiếng tách. Hiện chưa có bảo vệ riêng cho MSB và cũng chưa có nén. Nếu sau này kênh xấu hơn thì đó là chỗ đầu tiên nên làm.</p></div></div>
+    </section>
+
+    <!-- 13 -->
+    <section id="qam">
+      <h2><span class="n">13</span>QAM và khung chèn 0</h2>
+      <p class="where">Tx_qam.m · Rx_qam.m · theo bằng sáng chế BFSK</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Đích cuối là dưới nước. Sao không dùng luôn <code>Rx_qpsk</code> ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Vì dưới nước, và cả ngoài không khí, tín hiệu đến bằng nhiều đường: một tia thẳng cộng các tiếng vang trễ vài ms. Mỗi ký hiệu bị đè lên bởi đuôi của ký hiệu trước. Pilot ZF chỉ có một hệ số g nên không gỡ được chuyện đó. Trên kênh mô phỏng 3 tia, 16-QAM với bộ cân bằng một hệ số sai 776 / 4000 bit, còn bộ cân bằng miền tần số sai 1 / 4000.</p>
+        <p>Khung QAM chèn thêm tiêu đề và đoạn 0 vào mỗi block:</p>
+        <div class="fig">
+          <div class="scroll"><svg viewBox="0 0 640 110" width="640" height="110" role="img" aria-label="Một block QAM: tiêu đề, đoạn 0, dữ liệu, đoạn 0">
+            <rect class="seg-hdr" x="10" y="24" width="150" height="34"/><text x="18" y="46" font-size="12" style="fill:var(--surface)">tiêu đề ZC · 31</text>
+            <rect class="seg-z" x="160" y="24" width="60" height="34"/><text x="168" y="46" font-size="12" class="mut">0 · 8</text>
+            <rect class="tail" x="160" y="24" width="30" height="34"/>
+            <rect class="seg-dat" x="220" y="24" width="300" height="34"/>
+            <rect class="seg-pil" x="220" y="24" width="8" height="34"/><rect class="seg-pil" x="268" y="24" width="8" height="34"/><rect class="seg-pil" x="316" y="24" width="8" height="34"/>
+            <text x="340" y="46" font-size="12">dữ liệu · 10 × [pilot, 5]</text>
+            <rect class="seg-z" x="520" y="24" width="60" height="34"/><rect class="tail" x="520" y="24" width="30" height="34"/><text x="528" y="46" font-size="12" class="mut">0 · 8</text>
+            <text x="160" y="82" font-size="12" class="mut">phần cam = đuôi vang rơi vào đoạn 0, không đè lên phần sau</text>
+            <text x="10" y="100" font-size="12" class="mut">1 block = 31 + 8 + 60 + 8 = 107 ký hiệu, mang 50 ký hiệu dữ liệu (47%)</text>
+          </svg></div>
+        </div>
+        <p><b>Tiêu đề Zadoff-Chu</b> có |x| = 1 và phổ gần phẳng. Bên thu sẽ chia cho FFT của tiêu đề, nên không được có bin nào gần 0. Một chuỗi bit ngẫu nhiên có thể có những bin như thế.</p>
+        <p><b>Đoạn 0 dài hơn độ trễ kênh</b> làm cho tích chập tuyến tính bằng tích chập vòng, nên phép chia FFT ra kênh chính xác.</p>
+        <div class="ex"><div class="h">Ví dụ nhỏ: tiêu đề [a b c], kênh h = [1, 0.5] (vang trễ 1 ký hiệu)</div>
+          <div class="scroll"><table>
+            <tr><th>vị trí</th><th>0</th><th>1</th><th>2</th><th>3 (đoạn 0)</th></tr>
+            <tr><td>thu được</td><td>a</td><td>b + 0.5a</td><td>c + 0.5b</td><td>0.5c</td></tr>
+          </table></div>
+          <p>Toàn bộ đuôi 0.5c nằm trong đoạn 0. Cửa sổ [tiêu đề + 0] dài 4 chứa đủ tích chập, và FFT 4 điểm của nó đúng bằng FFT(tiêu đề)·FFT(h). Vậy H = FFT(thu)/FFT(tiêu đề). Nếu không có đoạn 0, ký hiệu dữ liệu đầu tiên sẽ cộng vào ô 0.5c và phép chia sai.</p>
+        </div>
+        <p>Sau đó code giữ <code>Lz</code> hệ số đầu của h = IFFT(H), vì kênh không thể dài hơn đoạn 0 và phần còn lại chỉ là nhiễu. Rồi cân bằng bằng MMSE thay vì chia thẳng:</p>
+        <div class="ex"><div class="h">Vì sao MMSE: ở một tần số kênh bị lõm, |H| = 0.05, phương sai nhiễu 0.01</div>
+          <div class="scroll"><table>
+            <tr><th>Cách</th><th>Hệ số nhân lên tín hiệu thu</th><th>Nhiễu bị khuếch đại</th></tr>
+            <tr><td>ZF: 1/H</td><td>1 / 0.05</td><td class="bad">× 20</td></tr>
+            <tr><td>MMSE: conj(H)/(|H|² + nv)</td><td>0.05 / (0.0025 + 0.01)</td><td>× 4</td></tr>
+          </table></div>
+        </div>
+        <p>MMSE làm biên độ hơi nhỏ đi, mà 16-QAM cần biên độ chính xác. Vì thế trong phần dữ liệu vẫn có pilot. Pilot cho độ dốc pha (CFO dư) và biên độ trung bình để chia ra. CFO dư lớn hơn thì được đo trước bằng lệch pha giữa hai nửa tiêu đề.</p>
+        <p>Điểm 16-QAM có mức trên mỗi trục là ±0.316 và ±0.949, nên điểm góc là 1.34∠45° và điểm trong là 0.45∠45°. Công suất trung bình bằng 1. Kết quả mô phỏng 3 tia, lệch đồng hồ 0.3%, SNR 12 dB: 0–10 / 4000 bit sai qua 8 lần chạy. Loopback có EVM 1.1%. Phần sàn này do xung vuông có phổ rất rộng, và cách chữa là tạo dạng xung RRC ở Tx (chưa làm).</p>
+      </div></div>
+    </section>
+
+    <!-- 14 -->
+    <section id="khong-khi">
+      <h2><span class="n">14</span>Qua không khí</h2>
+      <p class="where">qpsk_air/ · 500 baud · Reed-Solomon(250, 186)</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Bỏ dây, cho loa điện thoại phát vào mic laptop thì phải đổi gì ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Bản này là bản sao của QAM với M = 4, cộng ba thay đổi.</p>
+        <p><b>500 baud.</b> Ký hiệu dài 2 ms, nên 8 ký hiệu 0 dài 16 ms và che được vang xa hơn.</p>
+        <p><b>Lưới CFO mịn hơn.</b> Preamble giờ dài 100 ms, nên đỉnh tương quan về 0 ngay ở 10 Hz và lưới 15 Hz bỏ lỡ CFO thật. Bản thu đầu tiên đã khoá sai vì vậy. Bước lưới mới là baud/(4·50) = 2.5 Hz trong ±60 Hz, nên lệch tối đa 1.25 Hz và đỉnh mất không quá 3%. Điểm lưới thắng được dùng luôn làm CFO thô, vì qua không khí các ký hiệu preamble chồng lên nhau và cách đo lệch pha giữa hai ký hiệu liền nhau đọc ra 13 Hz khi CFO thật ≈ 0.</p>
+        <p><b>Mã Reed-Solomon.</b> 186 byte tin cộng 64 byte kiểm tra thành 250 byte = 2000 bit. Mã sửa được tối đa 32 byte sai ở bất kỳ đâu.</p>
+        <div class="ex"><div class="h">Kết quả đo</div>
+          <div class="scroll"><table>
+            <tr><th>Bản thu</th><th>Bit sai</th><th>Ghi chú</th></tr>
+            <tr><td>đầu tiên, trước khi sửa lưới CFO</td><td>1019 / 2000</td><td>khoá sai khung</td></tr>
+            <tr><td>đầu tiên, sau khi sửa</td><td>68 / 2000</td><td>EVM 49.7%</td></tr>
+            <tr><td>thứ hai, âm lượng một nửa</td><td>13 / 2000</td><td>chưa có Reed-Solomon</td></tr>
+            <tr><td>hiện tại (rx_air_qpsk.wav)</td><td class="bad">258 / 2000</td><td>lỗi dồn vào 5 block cuối, quá 32 byte nên Reed-Solomon bỏ cuộc</td></tr>
+          </table></div>
+        </div>
+        <p>Vẫn còn một điều chưa giải thích được: một mô hình tuyến tính từ tín hiệu phát chỉ giải thích được 85–90% bản thu. Nhiễu, cắt ngọn mic, rơi mẫu, lệch đồng hồ và ảnh phổ đều đã được loại trừ.</p>
+      </div></div>
+    </section>
+
+    <!-- 15 -->
+    <section id="python">
+      <h2><span class="n">15</span>MATLAB và Python</h2>
+      <p class="where">mỗi .m có một .py cùng tên bên cạnh · uv run qpsk/Rx_qpsk.py file</p>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Bản Python dịch từng dòng. Có chỗ nào dịch thẳng mà sai không ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p>Có bốn chỗ. Chỗ nào cũng làm lệch đúng một mẫu hoặc làm hỏng file mà không báo lỗi.</p>
+        <div class="ex"><div class="h">Bốn chỗ khác nhau giữa MATLAB và numpy</div>
+          <div class="scroll"><table>
+            <tr><th>Chỗ</th><th>MATLAB</th><th>numpy</th><th>Cách xử lý</th></tr>
+            <tr><td>round(2.5)</td><td>3</td><td class="bad">2 (làm tròn về số chẵn)</td><td>hàm mround</td></tr>
+            <tr><td>conv(0:9, ones(4)/4, 'same')</td><td>0.75 1.5 2.5 …</td><td class="bad">0.25 0.75 1.5 …</td><td>hàm conv_same</td></tr>
+            <tr><td>chỉ số mảng</td><td>bắt đầu từ 1</td><td>bắt đầu từ 0</td><td>giữ vị trí kiểu MATLAB, lấy x[p−1]</td></tr>
+            <tr><td>savemat số nguyên</td><td>đọc thành int64, chia ra số nguyên</td><td></td><td>lưu mọi số dạng float</td></tr>
+          </table></div>
+        </div>
+        <p>Với conv 'same' khi sps chẵn, numpy bắt đầu sớm hơn MATLAB một mẫu. Thế là mọi vị trí giữa ký hiệu lệch 1, đúng kiểu lỗi ta đã thấy ở bước 06. Ngoài ra <code>xcorr</code> của MATLAB đệm 0 cho hai chuỗi dài bằng nhau, nên Python cũng đệm như vậy để trục độ trễ và trung vị giống nhau. File .wav được ghi dạng int16, vì nhiều điện thoại không phát được wav số thực.</p>
+        <p>Đã kiểm tra trên cùng các bản thu: Python in ra đúng các con số của MATLAB, kể cả peak/median 267766.6, lỗi từng block, CFO −24.28 Hz và EVM 30.3%. Ghép chéo Tx Python với Rx MATLAB và ngược lại đều cho BER 0.</p>
+      </div></div>
+    </section>
+
+    <!-- 16 -->
+    <section id="bay">
+      <h2><span class="n">16</span>Bẫy hay gặp</h2>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Có lần em ra BER ≈ 0.5, tưởng cáp hỏng.</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <div class="warnbox"><p><b>BER ≈ 0.5 gần như luôn có nghĩa là đang so với nhầm bit.</b> Kênh hỏng thì lỗi thường tăng dần hoặc dồn vào từng đoạn. Một nửa số bit sai đều khắp nghĩa là bên thu đang so với <code>data_bits</code> của một lần chạy Tx khác.</p></div>
+        <p>Những đường dẫn đến tình huống đó:</p>
+        <p><b>Chạy lại Tx.</b> Mỗi lần chạy sinh bit ngẫu nhiên mới và ghi đè <code>tx_params*.mat</code>, nên bản thu cũ không giải mã được nữa. Muốn giữ bản thu cũ thì copy cả <code>.wav</code> lẫn <code>.mat</code> ra chỗ khác trước.</p>
+        <p><b>Chạy Tx MATLAB từ thư mục khác.</b> Tx ghi vào thư mục hiện tại, còn Rx đọc cạnh file .m. Bản Python không bị vấn đề này.</p>
+        <p><b>Workspace MATLAB còn biến cũ.</b> BPSK và QPSK dùng chung tên biến, nên khi chuyển qua lại thì chạy <code>clear</code> trước.</p>
+        <p><b>Chế độ <code>record</code></b> ghi đè <code>rx_debug*.wav</code>. Muốn giải mã lại bản cũ thì dùng <code>file</code>.</p>
+      </div></div>
+    </section>
+
+    <!-- 17 -->
+    <section id="tiep">
+      <h2><span class="n">17</span>Việc tiếp theo</h2>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Vậy từ đây đi tiếp hướng nào ạ?</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say">
+        <p><b>Trên cáp:</b> thử clip âm thanh của chính em và clip dài hơn. Đường truyền cáp coi như đã xong.</p>
+        <p><b>Tạo dạng xung RRC</b> thay xung vuông, để bỏ sàn EVM 1% của loopback và 7–12% ở 4000 baud trong QAM.</p>
+        <p><b>Qua không khí:</b> tìm ra phần 10–15% bản thu chưa giải thích được trước khi tăng tốc độ.</p>
+        <p><b>Dưới nước:</b> ngoài đa đường còn có Doppler và độ trễ thay đổi theo thời gian. Mỗi block phải ước lượng kênh lại từ tiêu đề, và có thể cần bám Doppler. Khung chèn 0 và bộ cân bằng miền tần số không phụ thuộc kiểu điều chế, nên vẫn dùng lại được với QAM coherent.</p>
+      </div></div>
+      <div class="turn tro"><div class="who">Trò</div><div class="say"><p>Em tóm lại nhé: phát là đặt bit vào pha của một sóng 8 kHz. Thu là quay ngược sóng mang, lấy trung bình đúng từng ký hiệu, tìm preamble, đo và bám độ lệch đồng hồ, rồi dùng pilot gỡ độ lợi và pha của kênh.</p></div></div>
+      <div class="turn thay"><div class="who">Thầy</div><div class="say"><p>Đúng vậy. Và mọi bước ở bên thu đều tồn tại vì một chuyện: hai máy không cùng một đồng hồ.</p></div></div>
+    </section>
+
+    <footer>Các con số lấy từ những lần chạy thật của <code>Rx_qpsk</code>, <code>Rx</code>, <code>Rx_qam</code>, <code>Rx_qpsk_air</code> và <code>Audio_qpsk</code> (MATLAB và Python cho kết quả giống nhau). Ví dụ tính tay đã được kiểm tra bằng numpy.</footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  // Integrate-and-dump: trung binh 4 mau rx_bb, cua so bat dau tai n = o
+  var vals = [[0.707, 0], [0.707, 90], [0.707, 0], [0.707, 90], [0.707, 180], [0.707, 90]];
+  var rows = document.querySelectorAll('#idtab tr');
+  var out = document.getElementById('idout');
+  function show(o) {
+    var re = 0, im = 0;
+    for (var n = o; n < o + 4; n++) { re += vals[n][0] * Math.cos(vals[n][1] * Math.PI / 180); im += vals[n][0] * Math.sin(vals[n][1] * Math.PI / 180); }
+    re /= 4; im /= 4;
+    var mag = Math.hypot(re, im), ang = Math.atan2(im, re) * 180 / Math.PI;
+    rows.forEach(function (r, i) { r.classList.toggle('on', i > 0 && i - 1 >= o && i - 1 < o + 4); });
+    out.textContent = 'trung bình mẫu ' + o + '–' + (o + 3) + ' = ' + mag.toFixed(3) + '∠' + Math.round(ang) + '°' +
+      (o === 0 ? '  (đúng: 1∠45° × 0.5)' : '  (sai: trộn sang ký hiệu 1∠135°)');
+    [0, 1, 2].forEach(function (k) { document.getElementById('w' + k).setAttribute('aria-pressed', String(k === o)); });
+  }
+  [0, 1, 2].forEach(function (k) { document.getElementById('w' + k).addEventListener('click', function () { show(k); }); });
+  show(0);
+
+  // Do cao dinh tuong quan: |trung binh e^{j2pi df k / baud}|, k = 0..49
+  function ratio(df) {
+    var re = 0, im = 0;
+    for (var k = 0; k < 50; k++) { re += Math.cos(2 * Math.PI * df * k / 1000); im += Math.sin(2 * Math.PI * df * k / 1000); }
+    return Math.hypot(re, im) / 50;
+  }
+  var X = function (df) { return 44 + df / 40 * 456; }, Y = function (r) { return 170 - r * 150; };
+  var d = '';
+  for (var f = 0; f <= 40.001; f += 0.25) d += (d ? 'L' : 'M') + X(f).toFixed(1) + ' ' + Y(ratio(f)).toFixed(1);
+  document.getElementById('cfocurve').setAttribute('d', d);
+  var slider = document.getElementById('cfo'), mk = document.getElementById('cfomk'), txt = document.getElementById('cfoout');
+  function upd() {
+    var df = parseFloat(slider.value), r = ratio(df);
+    mk.setAttribute('cx', X(df)); mk.setAttribute('cy', Y(r));
+    txt.textContent = 'lệch ' + df.toFixed(1) + ' Hz → đỉnh còn ' + Math.round(r * 100) + ' %' + (df === 24 ? '  (đúng mức lệch thật trên cáp)' : '');
+  }
+  slider.addEventListener('input', upd); upd();
+})();
+</script>
