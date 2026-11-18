@@ -1,0 +1,28 @@
+# Python (uv)
+.venv/
+__pycache__/
+
+# MATLAB autosave / backup
+*.asv
+*.m~
+
+# File phat sinh lai duoc bang Tx/Rx (tx_signal da nam trong tx_params*.mat)
+tx_cable*.wav
+tx_air_qpsk.wav
+tx_signal.wav
+rx_audio.wav
+output.xlsx
+# Giu lai: rx_debug*.wav, rx_air*.wav (ban thu that) + tx_params*.mat di kem (thieu .mat thi khong giai ma duoc)
+
+# Tai lieu tham khao ben ngoai, nang, khong phai code cua du an
+Thay_Khuong/
+papers/
+
+# Repo git rieng / khong dung nua
+MFSK_tx_rx/
+tx_rx_basic/
+
+# Cau hinh cong cu ca nhan
+.claude/
+.opencode/
+skills-lock.json

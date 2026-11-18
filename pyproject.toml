@@ -1,0 +1,15 @@
+[project]
+name = "modem-lab"
+version = "0.1.0"
+description = "Ban Python cua modem am thanh BPSK/QPSK/QAM (song song voi code MATLAB)"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "sounddevice",  # thu am that (record) va phat lai audio
+    "reedsolo",     # Reed-Solomon cua qpsk_air (cung ma voi rsenc MATLAB)
+]
+
+[tool.uv]
+package = false  # chi la script, khong dong goi

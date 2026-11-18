@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Giải mã QPSK từng bước: từ rx_raw đến BER (Rx_qpsk.m)</title>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+<style>body{font-family:'Noto Sans KR','Malgun Gothic','Microsoft YaHei',sans-serif;max-width:860px;margin:2rem auto;line-height:1.7;padding:0 1rem}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 8px}pre,code{background:#f4f3f8;border-radius:4px}pre{padding:.6rem .8rem;overflow:auto}img{max-width:100%}blockquote{margin-left:0;padding-left:1rem;border-left:3px solid #ccc;color:#555}</style>
+</head>
+<body>
+<h1 id="giai-ma-qpsk-tung-buoc-tu-rx_raw-en-ber-rx_qpsk.m">Giải mã QPSK từng bước: từ <code>rx_raw</code> đến BER (<code>Rx_qpsk.m</code>)</h1>
+<p>Tài liệu này đi qua <code>Rx_qpsk.m</code> theo đúng thứ tự chạy, dùng <strong>một ví dụ đồ chơi xuyên suốt</strong>, số nhỏ để tính tay được.</p>
+<h2 id="vi-du-o-choi">Ví dụ đồ chơi</h2>
+<table>
+<thead>
+<tr>
+<th>tham số</th>
+<th>đồ chơi</th>
+<th>thật (<code>Tx_qpsk.m</code> / <code>Audio_qpsk.m</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Fs</code></td>
+<td>360 Hz, chọn để <strong>1 Hz lệch tần = 1° mỗi mẫu</strong></td>
+<td>48000</td>
+</tr>
+<tr>
+<td><code>Fc</code></td>
+<td>90 Hz, sóng mang quay <strong>90° mỗi mẫu</strong></td>
+<td>8000</td>
+</tr>
+<tr>
+<td><code>sps</code></td>
+<td>4 mẫu/ký hiệu</td>
+<td>48 / 12</td>
+</tr>
+<tr>
+<td>preamble</td>
+<td>3 ký hiệu <code>[+1, −1, +1]</code>, dài 12 mẫu</td>
+<td>50 ký hiệu</td>
+</tr>
+<tr>
+<td>block</td>
+<td><code>[pilot, 2 ký hiệu dữ liệu]</code>, <code>spb</code> = 3·4 = 12 mẫu</td>
+<td><code>[pilot, 5]</code>, <code>spb</code> = 288 / 72</td>
+</tr>
+<tr>
+<td>số block</td>
+<td>3</td>
+<td>200 / 6400+</td>
+</tr>
+<tr>
+<td><code>pilot_sym</code></td>
+<td>1∠45°</td>
+<td>1∠45°</td>
+</tr>
+</tbody>
+</table>
+<p>Dữ liệu (ánh xạ Gray: bit 1 của cặp → dấu I, bit 2 → dấu Q):</p>
+<table>
+<thead>
+<tr>
+<th>block</th>
+<th>pilot</th>
+<th>dữ liệu 1</th>
+<th>dữ liệu 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1∠45°</td>
+<td>1∠135° (bit 0 1)</td>
+<td>1∠−135° (bit 0 0)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>1∠45°</td>
+<td>1∠45° (bit 1 1)</td>
+<td>1∠−45° (bit 1 0)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1∠45°</td>
+<td>1∠−45° (bit 1 0)</td>
+<td>1∠135° (bit 0 1)</td>
+</tr>
+</tbody>
+</table>
+<p>Kênh đồ chơi (dùng từ bước 4 trở đi): độ lợi cáp 0.8, pha sóng mang lệch <strong>20°</strong>, CFO <strong>5 Hz</strong> (tức 5° mỗi mẫu). Không nhiễu, trừ khi nói khác.</p>
+<p>Cả khung dài 12 + 3·12 = <strong>48 mẫu</strong>.</p>
+<h3 id="quy-tac-tinh-dung-trong-ca-file">Quy tắc tính dùng trong cả file</h3>
+<p>Số phức viết dạng <strong>biên độ∠góc</strong>. Chỉ cần 7 quy tắc sau:</p>
+<ul>
+<li><strong>(N) Nhân:</strong> nhân biên độ, cộng góc. a∠α × b∠β = (a×b)∠(α+β).
+Ví dụ: 0.707∠180° × 1∠−90° = (0.707×1)∠(180°+(−90°)) = 0.707∠90°.</li>
+<li><strong>(Đ) Số thực cũng là số phức:</strong> số dương x = x∠0°, số âm −x = x∠180°. Góc cộng hoặc trừ 360° vẫn là góc đó (∠−270° = ∠(−270°+360°) = ∠90°).</li>
+<li><strong>(C1) Cộng hai số cùng góc:</strong> cộng biên độ. a∠θ + b∠θ = (a+b)∠θ.
+Ví dụ: 0.707∠0° + 0.707∠0° = (0.707+0.707)∠0° = 1.414∠0°.</li>
+<li><strong>(C2) Cộng hai số cùng biên độ, ngược góc (lệch 180°):</strong> triệt tiêu. a∠θ + a∠(θ+180°) = 0.
+Ví dụ: 0.707∠0° + 0.707∠180° = 0.</li>
+<li><strong>(C3) Cộng hai số cùng biên độ, lệch nhau 90°:</strong> biên độ nhân 1.414 (đường chéo hình vuông, √2 ≈ 1.414), góc nằm giữa. a∠θ + a∠(θ+90°) = (a×1.414)∠(θ+45°).
+Ví dụ: 1.414∠0° + 1.414∠90° = (1.414×1.414)∠(0°+45°) = 2∠45°.</li>
+<li><strong>(C4) Cộng hai số khác biên độ, lệch nhau 90°:</strong> Pitago. a∠θ + b∠(θ+90°) = √(a²+b²)∠(θ + arctan(b/a)).
+Ví dụ: 1.414∠0° + 0.707∠90° = √(2+0.5)∠arctan(0.5) = 1.581∠26.6°.</li>
+<li><strong>(T) Số thực cos θ = hai mũi tên nửa độ dài, góc ngược dấu:</strong> cos θ = 0.5∠θ + 0.5∠−θ. Hai mũi tên đối xứng qua trục ngang: phần dọc triệt tiêu, phần ngang cộng lại thành cos θ.
+Ví dụ: cos 135° = −0.707 = 0.5∠135° + 0.5∠−135° (mỗi mũi tên có phần ngang 0.5 × cos 135° = −0.354; cộng lại −0.707).</li>
+<li><strong>(C5) Cộng N vectơ cùng biên độ, góc cách đều 360°/N:</strong> triệt tiêu. a∠θ + a∠(θ+360°/N) + … = 0. N mũi tên chia đều vòng tròn, phần ngang và phần dọc của chúng cân bằng nhau.
+Ví dụ: 0.4∠50° + 0.4∠170° + 0.4∠290° = 0 (ba vectơ cách đều 120°).</li>
+</ul>
+<hr />
+<h2 id="buoc-1-lay-rx_raw-dong-2653">Bước 1: lấy <code>rx_raw</code> (dòng 26–53)</h2>
+<p><strong>Input → Output</strong> của bước này:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td>file <code>.wav</code> (<code>rx_debug_qpsk.wav</code> qua <code>'record'</code>/<code>'file'</code>) hoặc <code>tx_signal</code> trong bộ nhớ (<code>'loopback'</code>)</td>
+</tr>
+<tr>
+<td><strong>Output (lý thuyết — đồ chơi)</strong></td>
+<td><code>rx_raw</code> = 48 mẫu <strong>thực</strong> trong [−1,1]: im lặng (nếu có) + 12 mẫu preamble + 36 mẫu block. Ví dụ 4 mẫu đầu ký hiệu 1∠45°: +0.707, −0.707, −0.707, +0.707 (là cos 45°, 135°, 225°, 315° — 2b)</td>
+</tr>
+<tr>
+<td><strong>Output (thực tế — cáp thật)</strong></td>
+<td>bản thu <code>rx_debug_qpsk.wav</code> Fs = 48000: im lặng/nhiễu → 0.5 s đệm → preamble 50 ký hiệu → 200 block (khung ≈ 1.25 s) → đệm. Biên độ bị thu nhỏ bởi gain điện thoại/cáp (đồ chơi mô phỏng bằng ×0.8). Chưa biết khung bắt đầu ở mẫu nào — đó là việc của bước 4</td>
+</tr>
+</tbody>
+</table>
+<p><code>rx_raw</code> là một dãy số thực, mỗi mẫu là một giá trị điện áp đã chuẩn hóa về [−1, 1]. Có ba nguồn:</p>
+<ul>
+<li><code>'loopback'</code>: <code>rx_raw = tx_signal</code>. Kênh lý tưởng, BER phải bằng 0. Dùng để kiểm tra code.</li>
+<li><code>'record'</code>: thu âm thật qua cáp trong <code>record_time</code> giây, rồi lưu vào <code>rx_debug_qpsk.wav</code>.</li>
+<li><code>'file'</code>: đọc lại file <code>.wav</code> đã thu. File này chỉ khớp với <code>tx_params_qpsk.mat</code> của <strong>cùng lần chạy</strong> <code>Tx_qpsk.m</code>.</li>
+</ul>
+<p>Bản thu gồm: im lặng hoặc nhiễu → 0.5 s đệm → preamble → các block → đệm. Chưa biết khung bắt đầu ở mẫu nào; bước 4 sẽ tìm.</p>
+<p><strong>Các biến &quot;móc&quot; cho <code>Audio_qpsk.m</code> (dòng 22, 31, 38).</strong> <code>Rx_qpsk.m</code> đọc 4 biến nếu chúng đã có sẵn, không thì lấy mặc định của QPSK:</p>
+<table>
+<thead>
+<tr>
+<th>biến</th>
+<th>chạy tay <code>Rx_qpsk.m</code> (mặc định)</th>
+<th>khi <code>Audio_qpsk('rx')</code> gọi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>params_file</code></td>
+<td><code>tx_params_qpsk.mat</code></td>
+<td><code>tx_params_audio.mat</code></td>
+</tr>
+<tr>
+<td><code>rx_wav</code></td>
+<td><code>rx_debug_qpsk.wav</code></td>
+<td><code>rx_debug_audio.wav</code></td>
+</tr>
+<tr>
+<td><code>audio_src</code> → <code>RX_SOURCE</code></td>
+<td>giá trị gõ ở dòng 27</td>
+<td>đối số thứ 2: <code>'loopback'</code> / <code>'file'</code>, bỏ trống thì là <code>'record'</code></td>
+</tr>
+<tr>
+<td><code>record_time</code></td>
+<td>5 s</td>
+<td>độ dài <code>tx_signal</code> (kể cả 2 đoạn đệm 0.5 s) + 3 s; audio 1 s ra khung ≈ 10.6 s</td>
+</tr>
+</tbody>
+</table>
+<p><code>Audio_qpsk.m</code> là một <em>hàm</em>, nên <code>Rx_qpsk.m</code> chạy trong workspace riêng của hàm đó. Vì vậy không bị lẫn biến cũ của <code>Tx.m</code>/<code>Rx.m</code>, lỗi thường làm BER ≈ 0.5.</p>
+<p><strong>Nhánh <code>'record'</code>:</strong></p>
+<ul>
+<li><code>input_device_id = -1</code> nghĩa là dùng thiết bị thu mặc định. Nếu máy thu nhầm mic laptop, chạy <code>audiodevinfo(1)</code> để xem ID rồi gán vào đây. Trên Linux còn cần định tuyến PulseAudio trong <code>~/.asoundrc</code> (xem README của <code>tx_rx_basic/</code>).</li>
+<li>Dòng in <code>peak</code>/<code>rms</code> để kiểm tra nhanh. Nếu peak ≈ 0, cáp chưa cắm hoặc đang thu nhầm thiết bị, khỏi cần giải mã.</li>
+<li>Bản thu luôn được ghi ra <code>rx_wav</code>, để sau này giải mã lại bằng <code>'file'</code> mà không phải thu lại.</li>
+</ul>
+<hr />
+<h2 id="buoc-2-ha-tan-rx_bb-rx_raw.exp-1j2pifct-dong-5657">Bước 2: hạ tần, <code>rx_bb = rx_raw .* exp(-1j*2*pi*Fc*t)</code> (dòng 56–57)</h2>
+<p><strong>Input → Output</strong> của bước này:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td><code>rx_raw</code> (N mẫu <strong>thực</strong>, Fs = 360 / 48000) + <code>Fc</code> (90 / 8000 Hz)</td>
+</tr>
+<tr>
+<td><strong>Output (lý thuyết — đồ chơi, kênh lý tưởng)</strong></td>
+<td><code>rx_bb</code> = N mẫu <strong>phức</strong>. Ký hiệu 1∠45° ở mẫu 1–4 cho 0.707∠0°, 0.707∠90°, 0.707∠0°, 0.707∠90° (bảng 2b). Mỗi mẫu = 0.5∠45° (ký hiệu) + 0.5∠(−45°−180°·(n−1)) (rác 2·Fc)</td>
+</tr>
+<tr>
+<td><strong>Output (thực tế — cáp thật)</strong></td>
+<td>cũng N mẫu phức; ký hiệu giờ nằm ở 0 Hz, nhưng <strong>pha còn lẫn</strong> pha kênh và CFO (chưa sửa ở bước này). Thành phần rác 2·Fc chỉ bị khử bởi I&amp;D khi cửa sổ khớp khung — khi lệch đồng hồ làm cửa sổ trôi, rác lọt qua (đây là lý do <code>Rx_qam.m</code> thêm FIR lowpass trước I&amp;D)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="a.tai-sao-cong-thuc-lai-la-va-song-mang-quay-moi-mau">2a. Tại sao công thức lại là <span class="math">\(t = (n-1)/F_s\)</span> và sóng mang quay <span class="math">\(90^\circ\)</span> mỗi mẫu?</h3>
+<ol>
+<li><p><strong>Tại sao lại có <span class="math">\((n-1)\)</span>?</strong></p>
+<ul>
+<li>Về mặt vật lý, trục thời gian bắt đầu từ giây thứ 0 (<span class="math">\(t = 0\text{ s}\)</span>).</li>
+<li>Nhưng MATLAB đánh số chỉ số mảng bắt đầu từ 1 (<code>n = 1, 2, 3...</code>), không có chỉ số 0.</li>
+<li>Vì vậy:
+<ul>
+<li>Mẫu thứ 1 (<span class="math">\(n=1\)</span>): thời điểm <span class="math">\(t = (1-1)/F_s = 0\text{ s}\)</span>.</li>
+<li>Mẫu thứ 2 (<span class="math">\(n=2\)</span>): thời điểm <span class="math">\(t = (2-1)/F_s = 1/F_s\text{ s}\)</span>.</li>
+<li>Mẫu thứ <span class="math">\(n\)</span>: thời điểm <span class="math">\(t = (n-1)/F_s\text{ s}\)</span>.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>Tại sao sóng mang quay đúng <span class="math">\(90^\circ\)</span> mỗi mẫu?</strong></p>
+<ul>
+<li>Sóng mang có tần số <span class="math">\(F_c = 90\text{ Hz}\)</span> (tức 1 giây nó quay 90 vòng tròn <span class="math">\(= 90 \times 360^\circ\)</span>).</li>
+<li>Tốc độ lấy mẫu <span class="math">\(F_s = 360\text{ Hz}\)</span> (1 giây cắt làm 360 mẫu, khoảng cách giữa 2 mẫu liên tiếp là <span class="math">\(\Delta t = 1/F_s = 1/360\text{ s}\)</span>).</li>
+<li>Cứ sau mỗi bước nhảy 1 mẫu, sóng mang quay thêm một góc là:
+<span class="math">\(\Delta\theta = 360^\circ \times \frac{F_c}{F_s} = 360^\circ \times \frac{90}{360} = 90^\circ\)</span></li>
+<li>Đến mẫu thứ <span class="math">\(n\)</span> (đã trôi qua <span class="math">\(n-1\)</span> bước nhảy), sóng mang đã tích lũy một góc quay là <span class="math">\(90^\circ \cdot (n-1)\)</span>.</li>
+<li>Dưới dạng vector phức, sóng mang tại mẫu <span class="math">\(n\)</span> là: <span class="math">\(1\angle(90^\circ \cdot (n-1))\)</span>.</li>
+</ul>
+</li>
+<li><p><strong>Tx phát và Rx thu:</strong></p>
+<ul>
+<li>Tx đưa ký hiệu baseband lên tần số mang <span class="math">\(F_c = 90\text{ Hz}\)</span> và lấy phần thực truyền lên dây cáp: <code>real(ký_hiệu × 1∠(90°·(n−1)))</code>.</li>
+<li>Rx muốn kéo tần số <span class="math">\(+90\text{ Hz}\)</span> về lại <span class="math">\(0\text{ Hz}\)</span> (baseband đứng yên) thì phải quay ngược chiều lại với đúng tốc độ đó: nhân với <span class="math">\(e^{-j 2\pi F_c t} = 1\angle(-90^\circ \cdot (n-1))\)</span>, tức là <strong>trừ <span class="math">\(90^\circ\)</span> sau mỗi mẫu</strong>.</li>
+</ul>
+</li>
+</ol>
+<h3 id="b.tinh-tay-chi-tiet-qua-mot-vi-du-mot-ky-hieu-145-o-mau-14">2b. Tính tay chi tiết qua một ví dụ: một ký hiệu 1∠45° ở mẫu 1–4</h3>
+<p><strong>Code thật chỉ có một dòng</strong> (<code>Tx_qpsk.m</code> dòng 30–31):</p>
+<pre><code class="language-matlab">t = (0:length(baseband)-1)/Fs;
+passband = real(baseband .* exp(1j*2*pi*Fc*t)); % I*cos - Q*sin
+</code></pre>
+<p>Dòng này có <strong>hai cách đọc</strong>, và hai cách cho ra <strong>cùng một số</strong>:</p>
+<ul>
+<li><strong>Đọc theo biên độ∠góc (dùng trong tài liệu này):</strong> <code>baseband</code> = ký hiệu <code>r∠θ</code> (đã <code>repelem</code> ra sps mẫu giống hệt nhau), <code>exp(1j*2*pi*Fc*t)</code> = sóng mang <code>1∠(90°·(n−1))</code>. Theo (N) nhân hai số phức ra <strong><code>r∠(θ + 90°·(n−1))</code></strong> — đó là cột &quot;passband phức&quot; trong bảng dưới. <code>real(...)</code> ở ngoài cùng = lấy <strong>cos của góc</strong>: <code>r·cos(θ + 90°·(n−1))</code> — đó là cột &quot;truyền trên dây&quot;.</li>
+<li><strong>Đọc theo comment <code>I*cos − Q*sin</code>:</strong> viết ký hiệu thành thẳng hàng <code>I + jQ</code> với <code>I = r·cosθ</code>, <code>Q = r·sinθ</code>, và sóng mang <code>cosφ + j·sinφ</code> (φ = 90°·(n−1)). Mở ngoặc nhân: <code>(I + jQ)(cosφ + j sinφ)</code> — phần thực còn lại <code>I·cosφ − Q·sinφ</code> (phần <code>j·j = −1</code> chuyển dấu phần sin). Hai cách giống nhau đúng công thức <code>cos(θ+φ) = cosθ·cosφ − sinθ·sinφ</code> (nhân <code>r</code> cả hai vế).</li>
+</ul>
+<p><strong>Kiểm tra bằng số, mẫu n = 2</strong> (φ = 90°), ký hiệu 1∠45°:</p>
+<table>
+<thead>
+<tr>
+<th>cách tính</th>
+<th>làm</th>
+<th>kết quả</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>biên độ∠góc</td>
+<td><code>real(1∠(45°+90°))</code> = cos 135°</td>
+<td>−0.707</td>
+</tr>
+<tr>
+<td><code>I·cosφ − Q·sinφ</code></td>
+<td>I = Q = 0.707: 0.707·cos 90° − 0.707·sin 90° = 0 − 0.707</td>
+<td><strong>−0.707</strong> ✓</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Mẹo:</strong> vì <code>real(...)</code> đứng ngoài cùng, hai cách đọc hoán chỗ được cho nhau — tài liệu này chọn đọc biên độ∠góc vì cộng/trừ góc theo (N) gọn hơn nhiều so với nhân cả số phức. Comment <code>I*cos − Q*sin</code> trong code chỉ là cách viết thẳng hàng của cùng một phép tính.</p>
+</blockquote>
+<blockquote>
+<p><strong>Dễ nhầm:</strong> <code>repelem</code> ở Tx làm cho <strong>baseband</strong> có cùng góc 1∠45° ở cả 4 mẫu. Nhưng thứ đi trên dây là <strong>passband</strong> = baseband × sóng mang, mà sóng mang tự quay thêm 90° sau mỗi mẫu. Vì vậy trên dây mỗi mẫu có một góc khác nhau. Góc chỉ giống nhau ở baseband: trước khi Tx nhân sóng mang, và sau khi Rx trừ sóng mang rồi lấy trung bình (bước 3).</p>
+</blockquote>
+<p><em>Tx tạo <code>rx_raw</code>.</em> Theo (N): 1∠45° × 1∠(90°·(n−1)) = 1∠(45° + 90°·(n−1)). Bảng dưới thêm cột <strong>passband phức</strong> (kết quả của phép nhân, thứ Tx tính ra trong máy) để thấy rõ nó &quot;chở&quot; cái gì, trước khi lấy phần thực để truyền:</p>
+<table>
+<thead>
+<tr>
+<th>n</th>
+<th>baseband (<code>repelem</code>)</th>
+<th>× sóng mang 1∠(90°·(n−1))</th>
+<th><strong>passband phức</strong> (trong máy)</th>
+<th><strong>truyền trên dây</strong> <code>rx_raw(n)</code> = real = cos(góc)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1∠45°</td>
+<td>× 1∠0°</td>
+<td>1∠(45°+0°) = <strong>1∠45°</strong></td>
+<td>cos 45° = <strong>+0.707</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>1∠45°</td>
+<td>× 1∠90°</td>
+<td>1∠(45°+90°) = <strong>1∠135°</strong></td>
+<td>cos 135° = <strong>−0.707</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>1∠45°</td>
+<td>× 1∠180°</td>
+<td>1∠(45°+180°) = <strong>1∠225°</strong></td>
+<td>cos 225° = <strong>−0.707</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>1∠45°</td>
+<td>× 1∠270°</td>
+<td>1∠(45°+270°) = <strong>1∠315°</strong></td>
+<td>cos 315° = <strong>+0.707</strong></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Cột baseband không đổi (đó là <code>repelem</code>). Cột passband phức quay vòng vì sóng mang được cộng vào — <strong>đây là thứ ký hiệu &quot;muốn nói&quot;</strong> (biên độ 1, góc 45°), nhưng mũi tên này chỉ nằm trong máy.</li>
+<li>Cột truyền trên dây là <strong>phần thực</strong> của cột passband phức (xem 2c): mỗi mẫu chỉ còn <strong>một số volt</strong>, biên độ 1 gói gọn thành ±0.707. Rx sẽ phải dựng lại cột passband phức từ cột dây này (bước 2 + bước 3).</li>
+</ul>
+<p><em>Rx nhân từng mẫu.</em> Đổi <code>rx_raw</code> sang dạng ∠ theo (Đ), rồi nhân theo (N):</p>
+<table>
+<thead>
+<tr>
+<th>n</th>
+<th><code>rx_raw(n)</code> dạng ∠</th>
+<th>× 1∠(−90°·(n−1))</th>
+<th>nhân biên độ, cộng góc</th>
+<th><code>rx_bb(n)</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>+0.707 = 0.707∠0°</td>
+<td>× 1∠0°</td>
+<td>(0.707×1)∠(0°+0°)</td>
+<td>0.707∠0°</td>
+</tr>
+<tr>
+<td>2</td>
+<td>−0.707 = 0.707∠180°</td>
+<td>× 1∠−90°</td>
+<td>(0.707×1)∠(180°−90°)</td>
+<td>0.707∠90°</td>
+</tr>
+<tr>
+<td>3</td>
+<td>−0.707 = 0.707∠180°</td>
+<td>× 1∠−180°</td>
+<td>(0.707×1)∠(180°−180°)</td>
+<td>0.707∠0°</td>
+</tr>
+<tr>
+<td>4</td>
+<td>+0.707 = 0.707∠0°</td>
+<td>× 1∠−270°</td>
+<td>(0.707×1)∠(0°−270°) = ∠−270° = ∠90°</td>
+<td>0.707∠90°</td>
+</tr>
+</tbody>
+</table>
+<p><code>rx_bb</code> nhảy qua lại giữa ∠0° và ∠90°, chưa thấy ngay 45°. Muốn thấy 45° nằm ở đâu thì <strong>đừng nhân cả số thực <code>rx_raw(n)</code>, mà tách nó ra theo (T) trước</strong>, rồi nhân từng mũi tên.</p>
+<p><strong>Làm tay mẫu n = 2:</strong></p>
+<ol>
+<li><code>rx_raw(2)</code> = cos 135° = 0.5∠135° + 0.5∠−135°   (theo (T))</li>
+<li>Nhân cả hai mũi tên với 1∠−90° (theo (N), cộng góc):
+<ul>
+<li>0.5∠135° × 1∠−90° = 0.5∠45°</li>
+<li>0.5∠−135° × 1∠−90° = 0.5∠−225° = 0.5∠135°</li>
+</ul>
+</li>
+<li>Cộng lại theo (C3): 0.5∠45° + 0.5∠135° = 0.707∠90°. Khớp với bảng trên ✓</li>
+</ol>
+<p><strong>Làm cả 4 mẫu như vậy:</strong></p>
+<table>
+<thead>
+<tr>
+<th>n</th>
+<th><code>rx_raw(n)</code> tách theo (T)</th>
+<th>×</th>
+<th>mũi tên 1</th>
+<th>mũi tên 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>0.5∠45° + 0.5∠−45°</td>
+<td>1∠0°</td>
+<td>0.5∠45°</td>
+<td>0.5∠−45°</td>
+</tr>
+<tr>
+<td>2</td>
+<td>0.5∠135° + 0.5∠−135°</td>
+<td>1∠−90°</td>
+<td>0.5∠45°</td>
+<td>0.5∠−225° = 0.5∠135°</td>
+</tr>
+<tr>
+<td>3</td>
+<td>0.5∠225° + 0.5∠−225°</td>
+<td>1∠−180°</td>
+<td>0.5∠45°</td>
+<td>0.5∠−405° = 0.5∠−45°</td>
+</tr>
+<tr>
+<td>4</td>
+<td>0.5∠315° + 0.5∠−315°</td>
+<td>1∠−270°</td>
+<td>0.5∠45°</td>
+<td>0.5∠−585° = 0.5∠135°</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Mũi tên 1</strong> có góc 45° + 90°·(n−1). Rx trừ đúng 90°·(n−1) nên còn lại <strong>0.5∠45° ở mọi mẫu</strong>: đây là ký hiệu cần lấy.</li>
+<li><strong>Mũi tên 2</strong> có góc −45° − 90°·(n−1), đã quay ngược chiều, Rx lại trừ thêm 90°·(n−1) nên nó quay <strong>180° mỗi mẫu</strong> (tần số 2·Fc): đây là phần rác, lần lượt ∠−45°, ∠135°, ∠−45°, ∠135°.</li>
+</ul>
+<p>Cộng mũi tên 1 với mũi tên 2 của từng hàng (theo (C3)) ra đúng 0.707∠0°, 0.707∠90°, 0.707∠0°, 0.707∠90°, là cột <code>rx_bb(n)</code> ở bảng trên.</p>
+<p>Bước 3 cộng 4 mẫu liền nhau: mũi tên 1 cộng thành 4 × 0.5∠45° = 2∠45° (C1); mũi tên 2 là 0.5∠−45° + 0.5∠135° hai lần, mỗi cặp lệch 180° nên bằng 0 (C2). Phần rác bị khử, chỉ còn lại 45°.</p>
+<h3 id="c.vi-sao-rx_rawn-cosgoc-phan-thuc-la-gi-va-mat-thong-tin-khong">2c. Vì sao <code>rx_raw(n)</code> = cos(góc)? (phần thực là gì, và mất thông tin không?)</h3>
+<p><strong>1. &quot;Lấy phần thực&quot; = &quot;lấy cos của góc&quot;.</strong> Một số phức <code>r∠θ</code> là một mũi tên. <code>real(...)</code> (phần thật) lấy <strong>phần nằm trên trục ngang</strong> của mũi tên đó, tức <code>r·cos θ</code>; phần dọc (<code>r·sin θ</code>, phần Ảo) bị bỏ. Kiểm tra bằng (T): <code>cos θ = 0.5∠θ + 0.5∠−θ</code> — hai mũi tên đối xứng, phần dọc triệt tiêu, phần ngang cộng lại đúng <code>cos θ</code>, nên phần thật của <code>r∠θ</code> chính là <code>r·cos θ</code>. Áp dụng: mẫu 1 của ví dụ, <code>1∠45° × 1∠0° = 1∠45°</code> → <code>rx_raw(1)</code> = cos 45° = <strong>+0.707</strong> (một số volt duy nhất chạy trên dây).</p>
+<p><strong>2. Vì sao bắt buộc phải lấy phần thực.</strong> Số phức chỉ là <strong>công cụ toán học</strong> trong máy tính (cộng/nhân bằng (N) rất tiện). Nhưng dây cáp, loa điện thoại, DAC, file <code>.wav</code> đều chỉ mang <strong>một điện áp thực mỗi mẫu</strong> — không có &quot;kênh thứ hai&quot; cho phần Ảo. Code Tx chính là <code>passband = real(baseband .* exp(1j*2*pi*Fc*t))</code> (<code>Tx_qpsk.m</code> dòng 31): <code>real()</code> là bước &quot;đóng gói&quot; mũi tên phức xuống một điện áp duy nhất trước khi ghi ra file.</p>
+<p><strong>3. cos(θ + 90°·(n−1)) có mất thông tin ký hiệu không? Không.</strong> Ký hiệu QPSK cần cả biên độ <code>r</code> và góc <code>θ</code>. Sóng thực <code>r·cos(θ + 90°·(n−1))</code> vẫn chứa <strong>đủ cả hai</strong>: <code>r</code> là biên độ của sóng, <code>θ</code> là pha so với sóng mang. Bước 2 cho thấy mắt thu (Rx nhân <code>1∠(−90°·(n−1))</code>) <strong>tái mở gói</strong> được: từ <code>0.707∠180°</code> (mẫu 2) nhân mắt thu ra <code>0.707∠90°</code>, rồi I&amp;D gom về <code>0.5∠45°</code> — mũi tên ký hiệu sống lại. cos ở Tx và mắt thu I/Q ở Rx là hai nửa của cùng một phép đóng/mở gói.</p>
+<p><strong>4. Vì sao không gửi luôn cả phần Ảo (sin) trên dây thứ hai?</strong> Gửi I trên cos và Q trên sin (2 điện áp) là <strong>truyền baseband I/Q</strong>, không cần sóng mang — nhưng tốn một kênh dây/loa thứ hai, và tín hiệu quanh 0 Hz không qua được đường điện thoại (bộ khuếch đại và tụ điện của cáp chặn DC và dải tần số rất thấp). Đưa cả gói lên <code>Fc = 8000 Hz</code> (trong dải nghe được 20 Hz–20 kHz của điện thoại) rồi gói vào <strong>một</strong> sóng thực là cách vừa tốn 1 dây, vừa lách qua được đặc tuyến tần số của kênh. Sóng mang làm &quot;xe tải&quot; chở ký hiệu, <code>real()</code> là thùng hàng đóng kín, và mắt thu Rx là cần cẩu mở thùng.</p>
+<hr />
+<h2 id="buoc-3-loc-phoi-hop-mf_out-convrx_bb-onessps1sps-same-dong-64">Bước 3: lọc phối hợp, <code>mf_out = conv(rx_bb, ones(sps,1)/sps, 'same')</code> (dòng 64)</h2>
+<p><strong>Input → Output</strong> của bước này:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td><code>rx_bb</code> (N mẫu phức) + <code>sps</code> (4 / 48 / 12)</td>
+</tr>
+<tr>
+<td><strong>Output (lý thuyết — đồ chơi, kênh lý tưởng)</strong></td>
+<td><code>mf_out</code> = N mẫu phức; mẫu tốt = <strong>0.5∠45°</strong> (3b). Với kênh đồ chơi (gain 0.8, pha 20°, CFO 5 Hz): mẫu tốt = <strong>0.4∠(ký hiệu + 20° + 5°·(n−1))</strong> (3d). Các mẫu không tốt lẫn ký hiệu kề (3c)</td>
+</tr>
+<tr>
+<td><strong>Output (thực tế — cáp thật)</strong></td>
+<td>mẫu tốt biên độ ≈ 0.5 × gain ≈ 0.3–0.4. Với sps = 48 cửa sổ đủ dài, rác 2·Fc khử gần hết. EVM đo được: ≈ 6% ở sps = 48, ≈ 15% ở sps = 12. Phần lớn là <strong>nhiễu + lọc analog</strong> của điện thoại/cáp, tạo sàn EVM ≈ 10% ở 4000 baud. <strong>Lấy mẫu nguyên mẫu</strong> (lệch tới ½ mẫu) chỉ góp một phần: ½/48 ≈ 1% ở sps = 48. Thử nội suy phân số trên bản audio 3 s chỉ hạ EVM từ 14.6% xuống 12.7%, và chỉ ở đoạn đồng hồ trôi</td>
+</tr>
+</tbody>
+</table>
+<h3 id="a.conv-tinh-gi-tung-so-mot">3a. <code>conv</code> tính gì, từng số một</h3>
+<p><code>ones(4,1)/4</code> = <code>h</code> = [0.25 0.25 0.25 0.25]. Phép chập (conv) của dãy <code>u</code> với <code>h</code> là:</p>
+<p><code>y(k) = u(k)×h(1) + u(k−1)×h(2) + u(k−2)×h(3) + u(k−3)×h(4)</code>   (mẫu không tồn tại coi là 0)</p>
+<p>Vì mọi <code>h</code> đều bằng 0.25, nên y(k) = 0.25 × (u(k−3) + u(k−2) + u(k−1) + u(k)): <strong>cộng 4 mẫu liền nhau rồi nhân 0.25</strong>, tức trung bình 4 mẫu.</p>
+<p><strong>Thử với số thực dễ nhìn</strong>, <code>u = [1 10 100 1000 10000]</code> (5 mẫu). Chập đầy đủ ra 5 + 4 − 1 = 8 số:</p>
+<table>
+<thead>
+<tr>
+<th>k</th>
+<th>các mẫu u được cộng</th>
+<th>tổng</th>
+<th>× 0.25 = y(k)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>u(1)</td>
+<td>1</td>
+<td>0.25</td>
+</tr>
+<tr>
+<td>2</td>
+<td>u(1)+u(2) = 1+10</td>
+<td>11</td>
+<td>2.75</td>
+</tr>
+<tr>
+<td>3</td>
+<td>u(1)+u(2)+u(3) = 1+10+100</td>
+<td>111</td>
+<td>27.75</td>
+</tr>
+<tr>
+<td>4</td>
+<td>u(1)+u(2)+u(3)+u(4) = 1+10+100+1000</td>
+<td>1111</td>
+<td>277.75</td>
+</tr>
+<tr>
+<td>5</td>
+<td>u(2)+…+u(5) = 10+100+1000+10000</td>
+<td>11110</td>
+<td>2777.5</td>
+</tr>
+<tr>
+<td>6</td>
+<td>u(3)+u(4)+u(5) = 100+1000+10000</td>
+<td>11100</td>
+<td>2775</td>
+</tr>
+<tr>
+<td>7</td>
+<td>u(4)+u(5) = 1000+10000</td>
+<td>11000</td>
+<td>2750</td>
+</tr>
+<tr>
+<td>8</td>
+<td>u(5)</td>
+<td>10000</td>
+<td>2500</td>
+</tr>
+</tbody>
+</table>
+<p>Ví dụ hàng k = 4, viết đủ từng phép nhân: 1000×0.25 + 100×0.25 + 10×0.25 + 1×0.25 = 250 + 25 + 2.5 + 0.25 = 277.75.</p>
+<p><strong><code>'same'</code> làm gì:</strong> chập đầy đủ ra 8 số, nhưng <code>u</code> chỉ có 5 mẫu. <code>'same'</code> cắt bớt để kết quả cũng dài 5, bằng <code>u</code>. MATLAB giữ <strong>5 số ở giữa</strong>: bỏ 2 số đầu (y(1), y(2)) và 1 số cuối (y(8)), còn y(3), y(4), y(5), y(6), y(7).</p>
+<p>Đánh số lại từ 1: <code>mf_out(1)</code> = y(3), <code>mf_out(2)</code> = y(4), … Tức là <strong><code>mf_out(n)</code> = y(n+2)</strong>. Chép từ bảng trên xuống:</p>
+<table>
+<thead>
+<tr>
+<th>n</th>
+<th><code>mf_out(n)</code> = y(n+2)</th>
+<th>các mẫu u được cộng (lấy từ bảng trên)</th>
+<th>viết theo n</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>y(3) = 27.75</td>
+<td>u(1), u(2), u(3)</td>
+<td>n, n+1, n+2 (thiếu n−1 = u(0), không tồn tại)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>y(4) = 277.75</td>
+<td>u(1), u(2), u(3), u(4)</td>
+<td><strong>n−1, n, n+1, n+2</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>y(5) = 2777.5</td>
+<td>u(2), u(3), u(4), u(5)</td>
+<td><strong>n−1, n, n+1, n+2</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>y(6) = 2775</td>
+<td>u(3), u(4), u(5)</td>
+<td>n−1, n, n+1 (thiếu n+2 = u(6))</td>
+</tr>
+<tr>
+<td>5</td>
+<td>y(7) = 2750</td>
+<td>u(4), u(5)</td>
+<td>n−1, n (thiếu u(6), u(7))</td>
+</tr>
+</tbody>
+</table>
+<p>Hàng n = 2 và n = 3 đủ 4 mẫu, và ở cả hai hàng đều là <strong>n−1, n, n+1, n+2</strong>. Hàng ở hai đầu cũng theo đúng quy luật đó, chỉ thiếu những mẫu nằm ngoài <code>u</code> (coi là 0).</p>
+<p>Vẽ ra cho dễ thấy, cửa sổ 4 mẫu của <code>mf_out(n)</code> luôn bắt đầu ở mẫu <strong>ngay trước</strong> n:</p>
+<pre><code>mẫu u:      1    2    3    4    5
+mf_out(2): [u1   u2   u3   u4]          ← bắt đầu ở 2−1 = 1
+mf_out(3):      [u2   u3   u4   u5]     ← bắt đầu ở 3−1 = 2
+</code></pre>
+<p>Kết luận: <strong><code>mf_out(n)</code> = trung bình các mẫu n−1, n, n+1, n+2</strong>. Tổng quát với <code>sps</code> chẵn: các mẫu <code>n − sps/2 + 1 … n + sps/2</code>. Với <code>sps</code> = 4: n − 1 … n + 2 ✓. (Đã chạy thử trong MATLAB: <code>conv([1 10 100 1000 10000], ones(1,4)/4, 'same')*4</code> ra <code>111 1111 11110 11100 11000</code>, khớp cột tổng của y(3) … y(7).)</p>
+<h3 id="b.ap-vao-rx_bb-cua-ky-hieu-145">3b. Áp vào <code>rx_bb</code> của ký hiệu 1∠45°</h3>
+<p>mf_out(2) = 0.25 × (rx_bb(1) + rx_bb(2) + rx_bb(3) + rx_bb(4))
+= 0.25 × (0.707∠0° + 0.707∠90° + 0.707∠0° + 0.707∠90°)</p>
+<ul>
+<li>Gom hai số ∠0° theo (C1): 0.707∠0° + 0.707∠0° = 1.414∠0°</li>
+<li>Gom hai số ∠90° theo (C1): 0.707∠90° + 0.707∠90° = 1.414∠90°</li>
+<li>Cộng hai kết quả theo (C3): 1.414∠0° + 1.414∠90° = (1.414×1.414)∠45° = 2∠45°</li>
+<li>Nhân 0.25 (= 0.25∠0°) theo (N): (0.25×2)∠(45°+0°) = <strong>0.5∠45°</strong> ✓</li>
+</ul>
+<p>Nhìn theo hai phần của bước 2: phần ký hiệu cộng 4 lần 0.5∠45° theo (C1) ra 2∠45°. Phần rác là 0.5∠−45°, 0.5∠135°, 0.5∠−45°, 0.5∠135°, từng cặp ngược góc nên theo (C2) ra 0. Còn lại 0.25 × 2∠45° = 0.5∠45°. Biên độ giảm một nửa không quan trọng, vì bước 7 chia cho pilot.</p>
+<p><strong>Các <code>mf_out(n)</code> còn lại</strong> (chỉ có ký hiệu A ở mẫu 1–4, mẫu ngoài coi là 0; cửa sổ là n−1 … n+2):</p>
+<table>
+<thead>
+<tr>
+<th>n</th>
+<th>cửa sổ</th>
+<th>cộng từng bước</th>
+<th>× 0.25</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>(0), 1, 2, 3</td>
+<td>0.707∠0° + 0.707∠0° = 1.414∠0° (C1); + 0.707∠90° → (C4) 1.581∠26.6°</td>
+<td>0.395∠26.6°</td>
+<td>✗ thiếu mẫu 4</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td><strong>1, 2, 3, 4</strong></td>
+<td>như trên → 2∠45°</td>
+<td><strong>0.5∠45°</strong></td>
+<td>✓ đủ 4 mẫu của A</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2, 3, 4, (0)</td>
+<td>0.707∠90° + 0.707∠90° = 1.414∠90° (C1); + 0.707∠0° → (C4) 1.581∠63.4°</td>
+<td>0.395∠63.4°</td>
+<td>✗ thiếu mẫu 1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>3, 4, (0), (0)</td>
+<td>0.707∠0° + 0.707∠90° → (C3) 1∠45°</td>
+<td>0.25∠45°</td>
+<td>✗ thiếu mẫu 1, 2</td>
+</tr>
+</tbody>
+</table>
+<p>Chỉ n = 2 lấy đủ cả 4 mẫu của A, nên cho giá trị lớn nhất và đúng góc 45°. Các n khác thiếu mẫu: góc lệch (26.6°, 63.4°) hoặc biên độ nhỏ (0.25). Khi có ký hiệu B ngay sau, chỗ &quot;(0)&quot; sẽ là mẫu của B, xem 3c.</p>
+<h3 id="c.vi-sao-mau-tot-la-s-sps2-1">3c. Vì sao mẫu tốt là <code>s + sps/2 − 1</code></h3>
+<p><strong><code>s</code></strong> = chỉ số của <strong>mẫu đầu tiên</strong> của một ký hiệu (s = start). Ví dụ: ký hiệu A chiếm mẫu 1–4 nên s = 1; ký hiệu B chiếm mẫu 5–8 nên s = 5. &quot;Mẫu tốt&quot; là mẫu n mà <code>mf_out(n)</code> lấy trung bình đúng <code>sps</code> mẫu của ký hiệu đó, không lẫn ký hiệu bên cạnh.</p>
+<p>Thêm ký hiệu thứ hai B = 1∠−135° ở mẫu 5–8. Tính như bước 2:</p>
+<table>
+<thead>
+<tr>
+<th>n</th>
+<th>góc Tx = −135° + 90°·(n−1)</th>
+<th><code>rx_raw(n)</code></th>
+<th>dạng ∠</th>
+<th>× 1∠(−90°·(n−1))</th>
+<th><code>rx_bb(n)</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5</td>
+<td>−135° + 360° = 225°</td>
+<td>cos 225° = −0.707</td>
+<td>0.707∠180°</td>
+<td>∠(180° − 360°) = ∠−180°</td>
+<td>0.707∠180°</td>
+</tr>
+<tr>
+<td>6</td>
+<td>−135° + 450° = 315°</td>
+<td>cos 315° = +0.707</td>
+<td>0.707∠0°</td>
+<td>∠(0° − 450°) = ∠−450° + 720°</td>
+<td>0.707∠−90°</td>
+</tr>
+<tr>
+<td>7</td>
+<td>−135° + 540° = 405° = 45°</td>
+<td>cos 45° = +0.707</td>
+<td>0.707∠0°</td>
+<td>∠(0° − 540°) = ∠−540° + 720°</td>
+<td>0.707∠180°</td>
+</tr>
+<tr>
+<td>8</td>
+<td>−135° + 630° = 495° = 135°</td>
+<td>cos 135° = −0.707</td>
+<td>0.707∠180°</td>
+<td>∠(180° − 630°) = ∠−450° + 360°</td>
+<td>0.707∠−90°</td>
+</tr>
+</tbody>
+</table>
+<p>Toàn bộ <code>rx_bb</code> (biên độ đều 0.707, chỉ ghi góc):</p>
+<table>
+<thead>
+<tr>
+<th>mẫu n</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ký hiệu</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+<td>B</td>
+<td>B</td>
+<td>B</td>
+<td>B</td>
+</tr>
+<tr>
+<td>góc <code>rx_bb(n)</code></td>
+<td>0°</td>
+<td>90°</td>
+<td>0°</td>
+<td>90°</td>
+<td>180°</td>
+<td>−90°</td>
+<td>180°</td>
+<td>−90°</td>
+</tr>
+</tbody>
+</table>
+<p>Tính <code>mf_out(n)</code> = 0.25 × (tổng mẫu n−1 … n+2) ở từng n:</p>
+<table>
+<thead>
+<tr>
+<th>n</th>
+<th>cửa sổ</th>
+<th>cộng từng bước</th>
+<th>× 0.25</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>(0), 1, 2, 3</td>
+<td>0 + 0.707∠0° + 0.707∠90° + 0.707∠0° → (C1) 1.414∠0° + 0.707∠90° → (C4) 1.581∠26.6°</td>
+<td>0.395∠26.6°</td>
+<td>✗ thiếu mẫu</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td><strong>1, 2, 3, 4</strong> (toàn A)</td>
+<td>(C1) 1.414∠0° + 1.414∠90° → (C3) 2∠45°</td>
+<td><strong>0.5∠45°</strong></td>
+<td>✓ đúng A</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2, 3, 4, 5 (3A + 1B)</td>
+<td>0.707∠90° + 0.707∠90° = 1.414∠90° (C1); 0.707∠0° + 0.707∠180° = 0 (C2) → 1.414∠90°</td>
+<td>0.354∠90°</td>
+<td>✗ lẫn B</td>
+</tr>
+<tr>
+<td>4</td>
+<td>3, 4, 5, 6 (2A + 2B)</td>
+<td>0.707∠0° + 0.707∠180° = 0 (C2); 0.707∠90° + 0.707∠−90° = 0 (C2) → 0</td>
+<td>0</td>
+<td>✗ triệt tiêu hết</td>
+</tr>
+<tr>
+<td>5</td>
+<td>4, 5, 6, 7 (1A + 3B)</td>
+<td>0.707∠90° + 0.707∠−90° = 0 (C2); 0.707∠180° + 0.707∠180° = 1.414∠180° (C1) → 1.414∠180°</td>
+<td>0.354∠180°</td>
+<td>✗ lẫn A</td>
+</tr>
+<tr>
+<td><strong>6</strong></td>
+<td><strong>5, 6, 7, 8</strong> (toàn B)</td>
+<td>(C1) 1.414∠180° + 1.414∠−90° → (C3, giữa 180° và 270° là 225°) 2∠225° = 2∠−135°</td>
+<td><strong>0.5∠−135°</strong></td>
+<td>✓ đúng B</td>
+</tr>
+</tbody>
+</table>
+<p>Chỉ n = 2 và n = 6 cho đúng ký hiệu, vì chỉ ở đó cửa sổ 4 mẫu nằm gọn trong một ký hiệu. Lệch 1 mẫu là lẫn sang ký hiệu bên cạnh.</p>
+<ul>
+<li>A bắt đầu ở s = 1, mẫu tốt = 2. B bắt đầu ở s = 5, mẫu tốt = 6. Tức mẫu tốt = s + 1.</li>
+<li>Với sps = 4: s + 1 = s + 4/2 − 1. Tổng quát: <strong><code>s + sps/2 − 1</code></strong>. Với sps = 48 (code thật) là s + 23.</li>
+<li>Đây là nguồn gốc của <code>round(sps/2) − 1</code> trong <code>p0</code> (xem bước 6).</li>
+</ul>
+<h3 id="d.gia-tri-mf_out-o-mau-tot-khi-co-kenh">3d. Giá trị <code>mf_out</code> ở mẫu tốt khi có kênh</h3>
+<p>Từ đây, trong ví dụ đồ chơi, mình chỉ viết giá trị <code>mf_out</code> tại mẫu tốt. Kênh đồ chơi thêm 3 thứ, mỗi thứ dùng (N):</p>
+<table>
+<thead>
+<tr>
+<th>nguồn</th>
+<th>nhân thêm</th>
+<th>tác dụng</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>trung bình 4 mẫu (3b)</td>
+<td>× 0.5∠0°</td>
+<td>biên độ 1 → 0.5</td>
+</tr>
+<tr>
+<td>độ lợi cáp 0.8</td>
+<td>× 0.8∠0°</td>
+<td>biên độ 0.5 × 0.8 = 0.4</td>
+</tr>
+<tr>
+<td>pha sóng mang lệch 20°</td>
+<td>× 1∠20°</td>
+<td>góc + 20°</td>
+</tr>
+<tr>
+<td>CFO 5 Hz = 5° mỗi mẫu</td>
+<td>× 1∠(5°·(n−1))</td>
+<td>góc + 5° mỗi mẫu, tính từ mẫu 1 (mẫu 1 là mốc, chưa trôi)</td>
+</tr>
+</tbody>
+</table>
+<p>Gộp lại: <code>mf_out = 0.4∠(ký_hiệu + 20° + 5°·(n−1))</code>, với n đếm từ mẫu đầu preamble.</p>
+<p>Vì sao mỗi thứ là một phép nhân:</p>
+<ul>
+<li><strong>Độ lợi cáp 0.8</strong>: tín hiệu trên dây nhỏ đi, mọi mẫu <code>rx_raw</code> nhân 0.8, nên kết quả cuối cũng nhân 0.8.</li>
+<li><strong>Pha lệch 20°</strong>: bộ tạo sóng mang của Rx không bắt đầu cùng lúc với Tx, nên mọi mẫu dư ra cùng một góc 20°.</li>
+<li><strong>CFO 5 Hz</strong>: đồng hồ điện thoại và laptop lệch nhau, nên sóng mang tới quay 95° mỗi mẫu thay vì 90°. Rx chỉ trừ 90° mỗi mẫu, nên còn dư 5° mỗi mẫu, cộng dồn theo n: mẫu 1 dư 0°, mẫu 2 dư 5°, mẫu 6 dư 25°…</li>
+</ul>
+<blockquote>
+<p>Đây là số làm tròn để tính tay. Nếu tính chính xác (có CFO thì trong 4 mẫu của cửa sổ góc đã trôi 0°, 5°, 10°, 15°, và phần rác 2·Fc không triệt tiêu hết), ba mẫu tốt của preamble ra 0.412∠28.9°, 0.415∠227.3°, 0.411∠65.8° thay vì 0.4∠25°, 0.4∠225°, 0.4∠65°. Lệch vài độ; với sps = 48 thật thì phần rác khử tốt hơn nhiều. Các bước sau dùng số làm tròn.</p>
+</blockquote>
+<p>Ví dụ với preamble <code>[+1, −1, +1]</code>:</p>
+<ul>
+<li>ký hiệu 1: +1 = 1∠0°, mẫu tốt n = 2 → 0.4∠(0° + 20° + 5°×1) = 0.4∠25°</li>
+<li>ký hiệu 2: −1 = 1∠180°, mẫu tốt n = 6 → 0.4∠(180° + 20° + 5°×5) = 0.4∠(180° + 20° + 25°) = 0.4∠225°</li>
+</ul>
+<p><strong>Tính tay cả 4 mẫu của ký hiệu 1∠45° khi kênh thêm đủ 3 thứ</strong> (dẫn số từ bảng trên dây của 2b — cùng một ký hiệu, cùng mẫu 1–4, giờ thêm gain 0.8 + pha lệch 20° + CFO 5 Hz):</p>
+<p><em>Trên dây</em> — gộp 3 thứ vào: gain 0.8 nhân biên độ; pha lệch (giữa sóng mang Tx và mắt thu Rx) +20°, và CFO làm sóng mang quay <strong>95°/mẫu</strong> thay vì 90°, cộng vào góc:</p>
+<p>góc trên dây = 45° + 20° + 95°·(n−1)</p>
+<table>
+<thead>
+<tr>
+<th>n</th>
+<th>2b (kênh lý tưởng) cos(45° + 90°·(n−1))</th>
+<th>3d (có kênh) 0.8·cos(45° + 20° + 95°·(n−1))</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>cos 45° = +0.707</td>
+<td>0.8·cos 65° = <strong>+0.338</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>cos 135° = −0.707</td>
+<td>0.8·cos 160° = <strong>−0.752</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>cos 225° = −0.707</td>
+<td>0.8·cos 255° = <strong>−0.207</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>cos 315° = +0.707</td>
+<td>0.8·cos 350° = <strong>+0.788</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Bốn số không còn đẹp ±0.707: CFO làm các mẫu ngồi lệch 5°, 10°, 15° so với góc &quot;đẹp&quot; của 2b, và biên độ bị ép 0.8.</p>
+<p><em>Hạ tần</em> — tách mỗi mẫu theo (T) rồi nhân mắt thu theo (N), ra <strong>mũi tên ký hiệu + mũi tên rác</strong> (cùng cách làm với bảng &quot;Làm cả 4 mẫu&quot; của 2b):</p>
+<table>
+<thead>
+<tr>
+<th>n</th>
+<th>0.8·cos(góc) tách (T)</th>
+<th>× mắt thu 1∠(−90°·(n−1))</th>
+<th>mũi tên ký hiệu</th>
+<th>mũi tên rác</th>
+<th><code>rx_bb(n)</code> (cộng 2 mũi tên)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>0.4∠65° + 0.4∠−65°</td>
+<td>× 1∠0°</td>
+<td>0.4∠65°</td>
+<td>0.4∠−65°</td>
+<td>0.338∠0°</td>
+</tr>
+<tr>
+<td>2</td>
+<td>0.4∠160° + 0.4∠−160°</td>
+<td>× 1∠−90°</td>
+<td>0.4∠70°</td>
+<td>0.4∠110°</td>
+<td>0.752∠90°</td>
+</tr>
+<tr>
+<td>3</td>
+<td>0.4∠255° + 0.4∠−255°</td>
+<td>× 1∠−180°</td>
+<td>0.4∠75°</td>
+<td>0.4∠−75°</td>
+<td>0.207∠0°</td>
+</tr>
+<tr>
+<td>4</td>
+<td>0.4∠350° + 0.4∠10°</td>
+<td>× 1∠−270°</td>
+<td>0.4∠80°</td>
+<td>0.4∠100°</td>
+<td>0.788∠90°</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Mũi tên ký hiệu</strong>: <code>0.4∠(65° + 5°·(n−1))</code> — đúng công thức &quot;Gộp lại&quot; <code>0.4∠(45° + 20° + 5°·(n−1))</code>: biên độ 0.4 (0.5 của 3b × 0.8), và <strong>quay 5° mỗi mẫu</strong> (phần CFO dư) thay vì đứng yên như 2b.</li>
+<li><strong>Mũi tên rác</strong>: nay quay <strong>185° mỗi mẫu</strong> (−95° của sóng mang tới, Rx lại trừ 90°) thay vì đúng 180° như 2b — <strong>CFO cũng áp lên phần rác</strong>, nên 4 mẫu không còn ngược góc trọn vẹn, (C2) không triệt tiêu hết.</li>
+</ul>
+<p><em>I&amp;D ở mẫu tốt n = 2</em> (cửa sổ 1…4, đúng 4 mẫu của ký hiệu — xem 3c):</p>
+<pre><code>mf_out(2) = 0.25 × (0.338∠0° + 0.752∠90° + 0.207∠0° + 0.788∠90°)
+          = 0.25 × (0.545∠0° + 1.540∠90°)                    (C1 gom từng cặp)
+          = 0.25 × √(0.545² + 1.540²) ∠ arctan(1.540/0.545)   (C4)
+          = 0.25 × 1.634∠70.5°
+          = 0.408∠70.5°
+</code></pre>
+<p>So với số làm tròn của &quot;Gộp lại&quot;: <code>0.4∠(45° + 20° + 5°×1)</code> = <strong>0.4∠70°</strong>. Lệch 0.008 biên độ và 0.5° — đúng tinh thần chú thích phía trên: số tròn dùng cho các bước sau (tính tay được), số thật lệch vài độ vì (a) 4 mũi tên ký hiệu trong cửa sổ đã trôi 65° → 80°, không còn cùng góc để (C1) đúng tuyệt đối, và (b) phần rác quay 185°/mẫu nên chỉ ≈ 0 chứ không bằng 0. Với sps = 48 thật, cả hai lỗi này nhỏ hơn nhiều.</p>
+<hr />
+<h2 id="buoc-4-tim-au-khung-dong-7495">Bước 4: tìm đầu khung (dòng 74–95)</h2>
+<p><strong>Input → Output</strong> của bước này:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td><code>mf_out</code> (N mẫu phức) + <code>preamble_ref</code> (50 ký hiệu → 2400 mẫu) + lưới <code>cfo_try</code> (−500…500 Hz, bước 15)</td>
+</tr>
+<tr>
+<td><strong>Output (lý thuyết — đồ chơi, 3 mẫu im lặng)</strong></td>
+<td>đỉnh xcorr ở lag 3 → <code>start_idx = 4</code>, tức <code>mf_out(4)</code> là mẫu đầu preamble. Nếu CFO 30 Hz mà <strong>không</strong> quét lưới: đỉnh đúng triệt tiêu về ≈ 0, <code>max</code> bắt nhầm lag khác (4a)</td>
+</tr>
+<tr>
+<td><strong>Output (thực tế — cáp thật)</strong></td>
+<td><code>start_idx</code> ≈ <strong>mẫu đầu tiên của preamble</strong> trên bản thu thật. Có thể lệch ±1 mẫu: với <code>sps</code> chẵn, <code>mf_out</code> của một ký hiệu là hình tam giác, nên hai vị trí cửa sổ cạnh nhau cho tổng tích bằng nhau. Các bước sau tự cộng <code>round(sps/2) − 1</code> để tới mẫu tốt. Đỉnh cao chỉ có khi quét <code>cfo_try</code>, vì CFO thật −22 ÷ −24 Hz nằm ngay trong lưới quét. <code>cfo_try</code> chọn được chỉ là ước <strong>thô</strong> (sai vài Hz), bước 5 tinh chỉnh</td>
+</tr>
+</tbody>
+</table>
+<p><code>preamble_ref</code> là preamble ở dạng mẫu: <code>[+1 +1 +1 +1  −1 −1 −1 −1  +1 +1 +1 +1]</code>. <code>xcorr</code> trượt nó dọc <code>mf_out</code> và tính tổng tích ở mỗi độ trễ.</p>
+<p><strong>Ví dụ: không CFO, trước preamble có 3 mẫu im lặng.</strong> Bỏ qua phần dốc ở mép ký hiệu:</p>
+<table>
+<thead>
+<tr>
+<th>mẫu <code>mf_out</code></th>
+<th>1–3</th>
+<th>4–7</th>
+<th>8–11</th>
+<th>12–15</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>giá trị</td>
+<td>0</td>
+<td>+0.5</td>
+<td>−0.5</td>
+<td>+0.5</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>lag</th>
+<th>các mẫu <code>mf_out</code> chồng lên ref</th>
+<th>tổng tích</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2</td>
+<td>3…14</td>
+<td>3.5</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td><strong>4…15</strong></td>
+<td><strong>6.0</strong> (12 mẫu × 0.5, khớp hết)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>5…16</td>
+<td>3.5</td>
+</tr>
+</tbody>
+</table>
+<p>Đỉnh ở lag 3, nên <code>start_idx = lags(pk) + 1 = 4</code>: <code>mf_out(4)</code> là mẫu đầu preamble ✓.</p>
+<h3 id="a.vi-sao-phai-quet-cfo_grid-cfo-lam-inh-that-triet-tieu-ve-0">4a. Vì sao phải quét <code>cfo_grid</code>: CFO làm đỉnh thật triệt tiêu về 0</h3>
+<p>Bước 4 chọn <code>start_idx</code> bằng <code>[~, pk] = max(tổng tích qua các lag)</code>: lag nào tổng tích <strong>to nhất</strong> thì thắng, không có luật nào bảo vệ lag đúng. Vì vậy muốn tìm đúng, lag đúng phải to hơn tất cả lag sai — đó là điều CFO phá vỡ.</p>
+<p><strong>Không CFO: 3 vectơ cùng hướng → đỉnh cao.</strong> Kênh đồ chơi (3d) chỉ còn pha lệch 20°. Lấy mẫu tốt n = 2, 6, 10 của preamble <code>[+1, −1, +1]</code>:</p>
+<table>
+<thead>
+<tr>
+<th>ký hiệu</th>
+<th>mẫu tốt n</th>
+<th><code>mf_out(n)</code> = 0.4∠(ký hiệu+20°)</th>
+<th>× ref</th>
+<th>kết quả</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+<td>0.4∠20°</td>
+<td>×(+1)</td>
+<td>0.4∠20°</td>
+</tr>
+<tr>
+<td>2</td>
+<td>6</td>
+<td>0.4∠200°</td>
+<td>×(−1) = ×1∠180°</td>
+<td>0.4∠380° = 0.4∠20°</td>
+</tr>
+<tr>
+<td>3</td>
+<td>10</td>
+<td>0.4∠20°</td>
+<td>×(+1)</td>
+<td>0.4∠20°</td>
+</tr>
+</tbody>
+</table>
+<p>Cộng 3 lần 0.4∠20° theo (C1) → <strong>1.2∠20°</strong>: đỉnh cao tách bạch ở đúng lag ✓.</p>
+<p><strong>CFO 30 Hz: 3 vectơ cách đều 120° → triệt tiêu về 0.</strong> Trong đồ chơi 1 Hz = 1°/mẫu, nên CFO 30 Hz = 30° mỗi mẫu. Theo 3d, mẫu tốt ký hiệu k lệch thêm <code>30°·(n−1)</code>:</p>
+<table>
+<thead>
+<tr>
+<th>ký hiệu</th>
+<th>mẫu tốt n</th>
+<th><code>mf_out(n)</code> = 0.4∠(ký hiệu+20°+30°·(n−1))</th>
+<th>× ref</th>
+<th>kết quả</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+<td>0.4∠(0°+20°+30°) = 0.4∠50°</td>
+<td>×(+1)</td>
+<td>0.4∠50°</td>
+</tr>
+<tr>
+<td>2</td>
+<td>6</td>
+<td>0.4∠(180°+20°+150°) = 0.4∠350°</td>
+<td>×(−1)</td>
+<td>0.4∠530° = 0.4∠170°</td>
+</tr>
+<tr>
+<td>3</td>
+<td>10</td>
+<td>0.4∠(0°+20°+270°) = 0.4∠290°</td>
+<td>×(+1)</td>
+<td>0.4∠290°</td>
+</tr>
+</tbody>
+</table>
+<p>Ba kết quả có góc <strong>50°, 170°, 290°</strong> — cách đều nhau đúng 120°, biên độ đều 0.4 → theo (C5) triệt tiêu. Kiểm tra số: cos 50° + cos 170° + cos 290° = 0.643 − 0.985 + 0.342 = 0; sin cũng = 0. Tổng tích ở <strong>đúng lag ≈ 0</strong>.</p>
+<p>Vì sao lại cách đều 120°: hai mẫu tốt kề nhau lệch 4 mẫu → lệch <code>4 × 30° = 120°</code>; ba ký hiệu → 3 × 120° = 360°, chia trọn vòng tròn. Nhìn toàn khung cũng vậy: 12 mẫu preamble, mỗi mẫu lệch 30°, 12 × 30° = 360° — 12 vectơ quanh vòng tròn, tổng ≈ 0 (phần mép cửa sổ I&amp;D làm còn sót vài term nhỏ, nên viết &quot;≈ 0&quot; chứ không phải 0 tuyệt đối).</p>
+<p><strong>Lag sai có thể vượt mặt lag đúng.</strong> Giả sử lag sai (ví dụ lệch 4 mẫu) cho các tích lệch kiểu nhau 0°, 60°, 180° thay vì cách đều:</p>
+<ul>
+<li>cos 0° + cos 60° + cos 180° = 1 + 0.5 − 1 = 0.5; sin 0° + sin 60° + sin 180° = 0 + 0.866 + 0 = 0.866 → tổng = 1.0∠60°.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>lag</th>
+<th>các tích</th>
+<th>tổng tích (điểm)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>đúng</strong></td>
+<td>50°, 170°, 290° (đều 120°)</td>
+<td><strong>≈ 0</strong></td>
+</tr>
+<tr>
+<td>sai (lệch 4 mẫu)</td>
+<td>0°, 60°, 180° (lệch kiểu)</td>
+<td><strong>1.0∠60°</strong></td>
+</tr>
+</tbody>
+</table>
+<p>→ <code>max</code> chọn lag sai. <strong>Khi lag đúng bị CFO triệt tiêu về 0, lag sai chỉ cần có chút bất đối xứng trong góc là thắng</strong>, vì bất đối xứng nghĩa là các mũi tên không triệt tiêu hết nhau, còn sót lại phần ngang (hoặc phần dọc) — tức là có số dương để khoe. Thậm chí ngay cả khi không CFO, lag sai lệch 1 mẫu cũng có tổng tích nhỏ nhưng vẫn dương (bảng 3c: lệch 1 mẫu là 0.395 thay vì 0.5, cùng dấu); có CFO, điểm lag đúng rớt về 0, chỉ cần lag sai còn sót vài phần là đủ thắng.</p>
+<p><strong>Chọn nhầm lag → BER ≈ 0.5.</strong> Giả sử lag đúng lẽ ra là 40, code chọn 36 (lệch 4 mẫu = 1 ký hiệu): khung đọc lệch, mỗi cửa sổ I&amp;D ở mẫu tốt giờ bắt đầu giữa ký hiệu → <code>mf_out</code> là sự pha trộn của 2 ký hiệu kế nhau (bảng 3c: lệch 1 mẫu đã ra 0.395∠26.6°, lệch thêm nữa ra 0 hoặc 0.354∠90° — không còn là ký hiệu nào cả). Pilot cũng bị lấy nhầm chỗ → bước 7 chia cho sai pilot, không sửa được vì <code>mf</code> đã là hỗn hợp 2 ký hiệu chứ không phải &quot;ký hiệu × sai số&quot;. Ký hiệu hỗn hợp chốt về 4 điểm constellation bằng cách bừa → BER ≈ 0.5. Âm thanh thu vẫn bình thường, chỉ là không biết khung bắt đầu ở đâu.</p>
+<p><strong>CFO 5 Hz (kênh đồ chơi) thì vẫn bắt được.</strong> 3 vectơ ở 25°, 45°, 65° — lệch nhau 20°, không triệt tiêu, tổng ≈ 1.15∠45° vẫn gần 1.2 → đỉnh vẫn cao. Nhưng preamble thật dài 50 ký hiệu × 1 ms = 50 ms: CFO chỉ 20 Hz đã quay chừng một vòng (20 Hz × 50 ms = 1 chu kỳ) → cả trăm vectơ triệt tiêu → đỉnh biến mất. Trong thực tế đã đo CFO ≈ −21 ÷ −24 Hz, tức <strong>nếu bỏ qua bước quét <code>cfo_grid</code>, bước 4 sẽ fail ngay trên chính bản thu thật</strong>. (Đỉnh đã tụt rõ từ khoảng nửa vòng: 10 Hz × 50 ms = ½ chu kỳ, nên comment trong code ghi ngưỡng &quot;~10 Hz&quot;.) Ở 4000 baud (<code>Audio_qpsk.m</code>, sps = 12) preamble chỉ dài 50 × 0.25 ms = 12.5 ms, nên phải tới khoảng 80 Hz mới quay hết một vòng. Code vẫn giữ lưới quét, để cùng một code chạy được ở cả hai tốc độ và với cặp thiết bị lệch đồng hồ nhiều hơn.</p>
+<p><strong>Cách sửa: xoay ngược trước khi tương quan.</strong> Trước khi <code>xcorr</code>, code nhân <code>mf_out</code> với <code>1∠(−cfo_try°·(n−1))</code>. Nếu <code>cfo_try</code> đúng bằng CFO thật (đồ chơi: 30), nó trừ đúng 30° mỗi mẫu, kéo 3 vectơ về cùng hướng:</p>
+<table>
+<thead>
+<tr>
+<th>ký hiệu</th>
+<th>n</th>
+<th>sau khi xoay theo cfo_try = 30</th>
+<th>× ref</th>
+<th>kết quả</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+<td>0.4∠(50°−30°) = 0.4∠20°</td>
+<td>×(+1)</td>
+<td>0.4∠20°</td>
+</tr>
+<tr>
+<td>2</td>
+<td>6</td>
+<td>0.4∠(350°−150°) = 0.4∠200°</td>
+<td>×(−1)</td>
+<td>0.4∠20°</td>
+</tr>
+<tr>
+<td>3</td>
+<td>10</td>
+<td>0.4∠(290°−270°) = 0.4∠20°</td>
+<td>×(+1)</td>
+<td>0.4∠20°</td>
+</tr>
+</tbody>
+</table>
+<p>→ tổng tích <strong>1.2∠20°</strong>: đỉnh thật quay lại, lag đúng thắng <code>max</code> ✓. Vì CFO thật chưa biết, code thử lưới <code>cfo_try</code> từ −500 đến 500 Hz, bước 15 Hz, giữ cặp (cfo_try, lag) nào có đỉnh cao nhất. <code>cfo_try</code> chỉ cần thô: bước 5 sẽ tinh chỉnh CFO chính xác bằng độ dốc pha trên preamble.</p>
+<h3>4b. <code>sync_confidence</code> và kiểm tra preamble nằm trọn (dòng 89–95)</h3>
+<p><strong><code>sync_confidence = peak_val / median(abs(c))</code></strong>: đỉnh tương quan cao gấp bao nhiêu lần mức &quot;nền&quot; của tương quan. Ý định là: tỉ số thấp (vài lần) thì không thật sự tìm thấy preamble.</p>
+<blockquote>
+<p><strong>Dễ nhầm: con số này thường vô nghĩa, hãy tin BER.</strong> <code>xcorr(derot, preamble_ref)</code> đệm 0 cho <code>preamble_ref</code> (2400 mẫu) bằng dài <code>mf_out</code> (N mẫu), và trả về mọi lag từ −(N−1) đến N−1. Ở các lag ≤ −2400, <code>preamble_ref</code> nằm hẳn trước mẫu 1 của bản thu, nên tổng tích <strong>đúng bằng 0</strong>. Như vậy gần một nửa <code>c</code> bằng 0, và median rơi đúng vào ranh giới đó. Nếu bản ghi còn có thêm im lặng bằng 0 tuyệt đối (đoạn đệm của <code>tx_signal</code> ở loopback), thì median ≈ 0 và tỉ số nhảy lên cỡ 1e16. Con số đó không có nghĩa là &quot;chắc chắn tuyệt đối&quot;.</p>
+</blockquote>
+<p><strong><code>if start_idx &lt; 1 || start_idx + length(preamble_ref) − 1 &gt; length(mf_out)</code></strong>: preamble tìm được phải nằm trọn trong bản thu. Nếu không, code dừng bằng <code>error</code>. Hay gặp khi bấm phát trên điện thoại quá muộn so với lúc bắt đầu ghi: đỉnh <code>max</code> khi đó rơi vào nhiễu ở mép bản thu.</p>
+<hr />
+<h2 id="buoc-5-uoc-luong-cfo-tu-preamble-dong-102110">Bước 5: ước lượng CFO từ preamble (dòng 102–110)</h2>
+<p><strong>Input → Output</strong> của bước này:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td><code>preamble_seg</code> = <code>mf_out(start_idx … start_idx + 50·sps − 1)</code> (2400 mẫu) + <code>preamble_sym</code> (±1)</td>
+</tr>
+<tr>
+<td><strong>Output (lý thuyết — đồ chơi, kênh 20° + CFO 5 Hz)</strong></td>
+<td><code>avg_step</code> = 20°/ký hiệu → <strong><code>cfo_hz</code> = 5 Hz</strong> (tính tay ở 5a)</td>
+</tr>
+<tr>
+<td><strong>Output (thực tế — cáp thật)</strong></td>
+<td><code>cfo_hz</code> ≈ <strong>−24.35 Hz</strong> trên bản thu QPSK 1000 baud (<code>rx_debug_qpsk.wav</code>), ≈ −21 Hz trên bản audio 3 s. Để so sánh: bản thu BPSK <code>rx_debug.wav</code> của <code>Rx.m</code> cho −22.03 Hz. Dấu âm = sóng mang thực đến <strong>thấp hơn</strong> <code>Fc</code> giả định; −24/8000 ≈ 0.3% — đúng tỉ lệ lệch đồng hồ điện thoại/laptop</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>idx_c = (k-1)*sps + round(sps/2)</code></strong> lấy mẫu tốt của ký hiệu thứ k, tính trong <code>preamble_seg</code>. <code>preamble_seg(1)</code> là mẫu đầu, nên mẫu tốt là <code>1 + sps/2 − 1 = sps/2</code>. Với sps = 4 ra các chỉ số <strong>2, 6, 10</strong>.</p>
+<p><strong><code>sym_val(k) = preamble_seg(idx_c) * preamble_sym(k)</code></strong>: nhân với ±1 đã biết để bỏ dấu, tức bỏ 180° của ký hiệu −1:</p>
+<table>
+<thead>
+<tr>
+<th>k</th>
+<th>idx</th>
+<th><code>preamble_seg(idx)</code></th>
+<th>× <code>preamble_sym</code></th>
+<th><code>sym_val</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+<td>0.4∠(0+20+5·1) = 0.4∠25°</td>
+<td>×(+1)</td>
+<td>0.4∠25°</td>
+</tr>
+<tr>
+<td>2</td>
+<td>6</td>
+<td>0.4∠(180+20+5·5) = 0.4∠225°</td>
+<td>×(−1), tức −180°</td>
+<td>0.4∠45°</td>
+</tr>
+<tr>
+<td>3</td>
+<td>10</td>
+<td>0.4∠(0+20+5·9) = 0.4∠65°</td>
+<td>×(+1)</td>
+<td>0.4∠65°</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>diffs = sym_val(2:end) .* conj(sym_val(1:end-1))</code></strong>: nhân với liên hợp là <strong>trừ góc</strong>:</p>
+<ul>
+<li>0.4∠45° · 0.4∠−25° = 0.16∠20°</li>
+<li>0.4∠65° · 0.4∠−45° = 0.16∠20°</li>
+</ul>
+<p><strong><code>avg_step = angle(mean(diffs))</code></strong> = 20° mỗi ký hiệu. Trung bình theo vectơ chứ không theo góc, để hai góc +179° và −179° không trung bình ra 0°.</p>
+<p><strong><code>cfo_hz = avg_step / (2*pi*sps/Fs)</code></strong>: một ký hiệu dài 4 mẫu, 20°/4 = 5°/mẫu, tức <strong>5 Hz</strong> ✓ (vì Fs = 360).</p>
+<p>Code chỉ so hai ký hiệu liền nhau, không <code>unwrap</code> cả chuỗi. Lý do: trên cáp thật, chỉ một điểm méo cũng có thể làm <code>unwrap</code> nhảy sai 360°, và cả ước lượng hỏng theo.</p>
+<h3 id="a.tinh-tay-chi-tiet-buoc-5-tu-0.425-0.4225-0.465-ra-5-hz">5a. Tính tay chi tiết bước 5: từ 0.4∠25°, 0.4∠225°, 0.4∠65° ra 5 Hz</h3>
+<p>Bước 5 trả lời một câu hỏi duy nhất: <strong>CFO là bao nhiêu Hz</strong>, chính xác đến từng phần Hz (bước 4 chỉ quét lưới thô, bước 15 Hz). Ý tưởng chỉ một câu:</p>
+<blockquote>
+<p>CFO làm góc xoay thừa <strong>cộng dồn theo mẫu</strong>. So góc của <strong>hai mẫu tốt liền nhau</strong> — phần cộng dồn lộ ra, mọi thứ hằng số tự triệt tiêu.</p>
+</blockquote>
+<p>Nhắc lại bài toán: mỗi góc đọc được là <strong>tổng của 3 thứ pha trộn</strong> (theo 3d, kênh: pha 20°, CFO 5 Hz):</p>
+<table>
+<thead>
+<tr>
+<th>ký hiệu</th>
+<th>ký hiệu Tx</th>
+<th>mẫu tốt n</th>
+<th>đọc được</th>
+<th>= 3 thứ gộp</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>+1 = 1∠0°</td>
+<td>2</td>
+<td>0.4∠25°</td>
+<td>0° + 20° + 5°×1</td>
+</tr>
+<tr>
+<td>2</td>
+<td>−1 = 1∠180°</td>
+<td>6</td>
+<td>0.4∠225°</td>
+<td>180° + 20° + 5°×5</td>
+</tr>
+<tr>
+<td>3</td>
+<td>+1 = 1∠0°</td>
+<td>10</td>
+<td>0.4∠65°</td>
+<td>0° + 20° + 5°×9</td>
+</tr>
+</tbody>
+</table>
+<p>(a) ký hiệu 0° hoặc 180°, (b) pha kênh 20° hằng số, (c) CFO <code>5°·(n−1)</code> cộng dồn. Chỉ lấy <strong>mẫu tốt</strong> (n = 2, 6, 10) vì mẫu khác lẫn ký hiệu kế bên, góc méo mó (bảng 3c), so sánh vô nghĩa.</p>
+<p><strong>(1) Nhân <code>preamble_sym(k)</code> → loại (a), ký hiệu ±1.</strong> Ký hiệu do Tx gửi, ta biết nó là +1 hay −1. Nhân (−1) = 1∠180° là <strong>trừ 180°</strong> (theo N):</p>
+<table>
+<thead>
+<tr>
+<th>k</th>
+<th>đọc được</th>
+<th>× <code>preamble_sym</code></th>
+<th><code>sym_val</code></th>
+<th>kiểm tra: 20° + 5°·(n−1)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>0.4∠25°</td>
+<td>×(+1)</td>
+<td>0.4∠25°</td>
+<td>20° + 5°×1 = 25° ✓</td>
+</tr>
+<tr>
+<td>2</td>
+<td>0.4∠225°</td>
+<td>×(−1), −180°</td>
+<td>0.4∠45°</td>
+<td>20° + 5°×5 = 45° ✓</td>
+</tr>
+<tr>
+<td>3</td>
+<td>0.4∠65°</td>
+<td>×(+1)</td>
+<td>0.4∠65°</td>
+<td>20° + 5°×9 = 65° ✓</td>
+</tr>
+</tbody>
+</table>
+<p>Sau bước này, ba số còn <strong>pha kênh 20° + CFO cộng dồn</strong>, không còn dấu ký hiệu. Nhìn <code>sym_val</code>: <code>25°, 45°, 65°</code> — cách đều nhau <strong>20°</strong>. CFO đã lộ, chỉ còn tách khỏi pha kênh.</p>
+<p><strong>(2) <code>diffs = sym_val(2:end) .* conj(sym_val(1:end-1))</code> → loại (b), pha kênh 20°.</strong> Nhân liên hợp là <strong>trừ góc</strong>:</p>
+<ul>
+<li>diff(1) = <code>sym_val(2) × conj(sym_val(1))</code> = 0.4∠45° × 0.4∠(−25°) = <strong>0.16∠20°</strong></li>
+<li>diff(2) = 0.4∠65° × 0.4∠(−45°) = <strong>0.16∠20°</strong></li>
+</ul>
+<p>Vì sao pha kênh biến mất: nó là <strong>hằng số</strong> 20° có ở cả hai số, trong phép trừ góc tự hủy: <code>(+20° + CFO₂) − (+20° + CFO₁) = CFO₂ − CFO₁</code>. Còn lại đúng <strong>lệch CFO giữa hai mẫu tốt cách nhau 4 mẫu</strong> = <code>5°×4 = 20°</code> ✓. Gain 0.8 cũng không ảnh hưởng: nó làm biên độ <code>diffs</code> lớn/nhỏ đi nhưng code chỉ lấy góc qua <code>angle()</code>.</p>
+<p><strong>(3) <code>avg_step = angle(mean(diffs))</code> — trung bình <em>vectơ</em>, không trung bình góc.</strong> Với 49 cặp diffs (50 ký hiệu preamble), mỗi cặp ≈ 0.16∠20°, trung bình vẫn 0.16∠20° → <code>angle</code> = 20°.</p>
+<p>Vì sao phải trung bình vectơ: 2 góc gần ±180° (cùng hướng, lệch 2°):</p>
+<ul>
+<li>Trung bình góc số học: <code>(+179° + (−179°))/2 = 0°</code> — <strong>sai hoàn toàn</strong> (đáp án đúng ≈ 180°).</li>
+<li>Trung bình vectơ: cos 179° + cos(−179°) ≈ −2, sin triệt tiêu → ≈ 0.32∠180° → <code>angle</code> = <strong>180°</strong> ✓.</li>
+</ul>
+<p><code>mean</code> còn làm noise triệt tiêu một phần: 49 mũi tên nhiễu random quanh 20°, cộng về trung tâm 20°.</p>
+<p><strong>(4) Đổi đơn vị, 20°/ký hiệu → 5 Hz.</strong> <code>avg_step = 20°</code> là lệch mỗi <strong>ký hiệu</strong> (mỗi cặp mẫu tốt cách nhau <code>sps = 4</code> mẫu). Mỗi mẫu: <code>20°/4 = 5°/mẫu</code>. Trong đồ chơi 1 Hz = 1°/mẫu (Fs = 360):</p>
+<blockquote>
+<p><strong>5°/mẫu = 5 Hz</strong> ✓ — đúng CFO &quot;gieo&quot; vào kênh.</p>
+</blockquote>
+<p>Công thức code là bản tổng quát (radians): <code>cfo_hz = avg_step / (2*pi*sps/Fs)</code>. Mẫu số <code>2π·sps/Fs</code> là &quot;radian thừa mỗi Hz trong một ký hiệu&quot;: CFO Δf Hz gây thừa <code>2π·Δf/Fs</code> rad mỗi mẫu, × sps mẫu = <code>2π·Δf·sps/Fs</code> rad/ký hiệu. Kiểm tra số: 20° = 0.349 rad, <code>2π×4/360</code> = 0.0698 rad/Hz → <code>0.349/0.0698 = 5 Hz</code> ✓.</p>
+<p><strong>(5) Vì sao chỉ so liền kề, không <code>unwrap</code> cả chuỗi.</strong> Mỗi diff là một phép đo <strong>theo modulo 360°</strong>: miễn là bước thật &lt; 180° thì diff = đúng bước thật ± noise, không cần biết lịch sử. Code chỉ cần <strong>trung bình</strong> các cặp độc lập rồi mới <code>angle</code>. Ngược lại, <code>unwrap</code> cả chuỗi 50 số: một mẫu nhiễu làm nhảy sai 360° thì <strong>cả chuỗi phía sau lệch hết</strong>, ước lượng hỏng theo. So liền kề + trung bình vectơ: một cặp xấu chỉ là 1 trong 49, chìm trong noise.</p>
+<p>Tóm lại: <strong>nhân ±1 để bỏ ký hiệu → so hiệu liên để bỏ pha kênh → trung bình vectơ để bỏ noise → chia sps, đổi đơn vị ra Hz.</strong></p>
+<hr />
+<h2 id="buoc-6-bam-cfo-va-vi-tri-pilot-theo-tung-oan-m-block-dong-121158">Bước 6: bám CFO và vị trí pilot theo từng đoạn M block (dòng 121–158)</h2>
+<p><strong>Input → Output</strong> của bước này:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td><code>mfo</code> = <code>mf_out</code> cắt từ <code>start_idx</code> (mfo(1) = mẫu đầu preamble) + <code>p0</code> + <code>M = 10</code> block/đoạn + <code>drift</code> suy từ CFO</td>
+</tr>
+<tr>
+<td><strong>Output (lý thuyết — đồ chơi, drift = 0)</strong></td>
+<td><code>pilot_idx</code> = [14, 26, 38], <code>cfo_blk</code> = [5, 5, 5] Hz, <code>dbest</code> = 0 mọi đoạn (6c: đường pha nằm ngang, độ dốc 0)</td>
+</tr>
+<tr>
+<td><strong>Output (thực tế — cáp thật)</strong></td>
+<td><code>block_timing</code> tăng dần <strong>4 → 179 mẫu</strong> trên bản thu 1000 baud (≈ 3.7 ký hiệu trôi trong khung); CFO <strong>đổi giữa khung</strong>: ≈ −24 Hz trong 2.6 s đầu rồi ≈ 0 (khung 10.6 s) → <code>cfo_blk</code> khác nhau giữa các đoạn; bản audio 3 s: pilot timing plateau ≈ 420 mẫu</td>
+</tr>
+</tbody>
+</table>
+<p>Trên cáp thật, lệch đồng hồ <strong>thay đổi giữa khung</strong>. Ví dụ khung 10.6 s: CFO ≈ −24 Hz trong 2.6 s đầu, rồi ≈ 0. Vì vậy một CFO chung cho cả khung là không đủ. Code chia khung thành các đoạn M = 10 block và làm 3 việc cho mỗi đoạn.</p>
+<blockquote>
+<p><strong>Vì sao không tinh chỉnh một CFO cho cả khung?</strong> Bản trước của code đã làm vậy: tinh chỉnh CFO trên K = 20 → 80 → … pilot đầu, rồi suy drift từ CFO đó cho cả khung. Trên bản thu 10.6 s, khi đồng hồ đổi tỉ lệ giữa khung, ước lượng bị kéo từ −25 Hz lên tận −48 Hz. Vị trí pilot đoán sai cả ký hiệu và <strong>BER = 0.499</strong>. Chia đoạn thì mỗi ước lượng chỉ phải đúng trong 10 block (≈ 15–60 ms). Đoạn sau lấy CFO của đoạn trước làm điểm xuất phát nhưng tự đo lại độ dốc pha. Vị trí lệch thì được <code>dbest</code> của đoạn sau kéo về, nên sai số không cộng dồn qua cả khung.</p>
+</blockquote>
+<p><code>mfo = mf_out(start_idx:end)</code> cắt bỏ phần trước preamble, nên <code>mfo(1)</code> là mẫu đầu preamble.</p>
+<h3 id="a.vi-tri-pilot-au-tien-p0">6a. Vị trí pilot đầu tiên, <code>p0</code></h3>
+<ul>
+<li><code>data_start = 12 + 1 = 13</code> là mẫu đầu của pilot block 1.</li>
+<li><code>p0 = 13 + round(4/2) − 1 = 14</code> là mẫu tốt của pilot đó.</li>
+</ul>
+<p>(Chi tiết <code>−1</code> xem bước 3.)</p>
+<h3 id="b.oan-vi-tri-m-pilot-p-p0-0m-1spb1drift">6b. Đoán vị trí m pilot, <code>p = p0 + (0:m-1)'*spb*(1+drift)</code></h3>
+<ul>
+<li>Nếu <code>drift = 0</code>: <code>p = [14; 26; 38]</code>, các pilot cách nhau 12 mẫu.</li>
+<li><code>drift = −cfo/(Fc+cfo)</code> là tỉ lệ lệch đồng hồ lấy mẫu, suy ra từ CFO. Hai đại lượng này cùng sinh ra từ một độ lệch đồng hồ.</li>
+<li><strong>Trong đồ chơi, coi <code>drift</code> = 0.</strong> Fc = 90 Hz nhỏ quá nên số drift sẽ vô lý. Với số thật, drift ≈ 0.3%, qua 10 block × 72 mẫu tích lũy ≈ 2.2 mẫu, nên bắt buộc phải bù.</li>
+<li><code>min(..., L)</code> chặn để không vượt cuối bản thu.</li>
+</ul>
+<p><strong>Kiểm tra công thức <code>drift</code> bằng số thật</strong> (bản thu QPSK 1000 baud, sps = 48, <code>spb</code> = 288):</p>
+<table>
+<thead>
+<tr>
+<th>đại lượng</th>
+<th>tính</th>
+<th>kết quả</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CFO đo được</td>
+<td></td>
+<td>−24 Hz</td>
+</tr>
+<tr>
+<td><code>drift = −cfo/(Fc+cfo)</code></td>
+<td>−(−24) / (8000 − 24) = 24/7976</td>
+<td><strong>+0.30%</strong></td>
+</tr>
+<tr>
+<td>độ dài phần dữ liệu</td>
+<td>200 block × 288 mẫu</td>
+<td>57600 mẫu</td>
+</tr>
+<tr>
+<td>pilot cuối trôi so với danh nghĩa</td>
+<td>57600 × 0.0030</td>
+<td><strong>≈ 173 mẫu</strong></td>
+</tr>
+<tr>
+<td><code>block_timing</code> in ra</td>
+<td>từ 4 lên 179</td>
+<td>trôi <strong>175 mẫu</strong> ✓</td>
+</tr>
+</tbody>
+</table>
+<p>Dấu cũng khớp: CFO âm (sóng mang tới thấp hơn <code>Fc</code>, tức đồng hồ điện thoại chậm hơn laptop) cho <code>drift</code> dương. Mỗi block thật dài hơn danh nghĩa, nên pilot đến <strong>muộn dần</strong> và <code>block_timing</code> tăng.</p>
+<h3 id="c.tinh-chinh-cfo-bang-o-doc-pha-pilot-chay-2-vong">6c. Tinh chỉnh CFO bằng độ dốc pha pilot (chạy 2 vòng)</h3>
+<p>Tại các vị trí <code>p</code>, xoay ngược CFO hiện tại rồi chia <code>pilot_sym</code>:</p>
+<table>
+<thead>
+<tr>
+<th>p</th>
+<th><code>mfo(p)</code></th>
+<th>xoay ngược 5°·(p−1)</th>
+<th>/ 1∠45°</th>
+<th><code>ph</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>14</td>
+<td>0.4∠(45+20+65) = 0.4∠130°</td>
+<td>−65°</td>
+<td>0.4∠20°</td>
+<td>20°</td>
+</tr>
+<tr>
+<td>26</td>
+<td>0.4∠(45+20+125) = 0.4∠190°</td>
+<td>−125°</td>
+<td>0.4∠20°</td>
+<td>20°</td>
+</tr>
+<tr>
+<td>38</td>
+<td>0.4∠(45+20+185) = 0.4∠250°</td>
+<td>−185°</td>
+<td>0.4∠20°</td>
+<td>20°</td>
+</tr>
+</tbody>
+</table>
+<p><code>polyfit</code> qua 3 điểm (0, 20°), (12, 20°), (24, 20°) cho đường nằm ngang, độ dốc 0. CFO 5 Hz đã đúng, không phải chỉnh.</p>
+<p><strong>Nếu CFO hiện tại chỉ là 4 Hz</strong> (thiếu 1 Hz), xoay ngược chỉ trừ 4°·(p−1), nên còn dư 1°·(p−1):</p>
+<table>
+<thead>
+<tr>
+<th>p</th>
+<th><code>mfo(p)</code></th>
+<th>xoay ngược 4°·(p−1)</th>
+<th>/ 1∠45°</th>
+<th><code>ph</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>14</td>
+<td>0.4∠130°</td>
+<td>−52° → 0.4∠78°</td>
+<td>0.4∠33°</td>
+<td>33°</td>
+</tr>
+<tr>
+<td>26</td>
+<td>0.4∠190°</td>
+<td>−100° → 0.4∠90°</td>
+<td>0.4∠45°</td>
+<td>45°</td>
+</tr>
+<tr>
+<td>38</td>
+<td>0.4∠250°</td>
+<td>−148° → 0.4∠102°</td>
+<td>0.4∠57°</td>
+<td>57°</td>
+</tr>
+</tbody>
+</table>
+<p><code>polyfit</code> qua (0, 33°), (12, 45°), (24, 57°) cho độ dốc <code>pf(1)</code> = 12°/12 mẫu = <strong>1°/mẫu</strong>. Code cộng <code>pf(1)·Fs/(2π)</code> vào CFO; trong đồ chơi 1°/mẫu = 1 Hz, nên CFO thành 4 + 1 = <strong>5 Hz</strong> ✓. Đường thẳng ở đây là <strong>pha theo số mẫu</strong>, và độ dốc của nó chính là CFO còn dư. Hệ số chặn <code>pf(2)</code> = 33° là pha kênh + pha CFO tích lũy tới pilot đầu đoạn; code bỏ qua nó, vì bước 7 chia cho <code>g</code> của từng block.</p>
+<p><strong>Vì sao chạy 2 vòng (<code>for it = 1:2</code>).</strong> Vị trí đoán <code>p</code> phụ thuộc <code>drift</code>, mà <code>drift</code> lại tính từ <code>cfo_hz</code>. Vòng 1 sửa CFO, nên <code>drift</code> đổi và <code>p</code> dời đi một chút. Vòng 2 đo lại pha ở vị trí <code>p</code> mới và sửa nốt phần CFO dư. Với ±0.3% thì sau 2 vòng đã ổn định. Trong đồ chơi <code>drift</code> = 0, nên vòng 2 cho độ dốc 0.</p>
+<p><strong><code>if m &gt;= 3</code>.</strong> Đoạn cuối khung có thể chỉ còn 1–2 block (khi <code>num_blocks</code> không chia hết cho M). Hai điểm thì luôn nằm trên một đường thẳng, nhiễu ở pilot nào cũng thành độ dốc, nên code giữ nguyên CFO của đoạn trước.</p>
+<p><strong>Vì sao ở đây dùng <code>unwrap</code> được, còn bước 5 thì tránh?</strong> Ở đây pha đã được xoay ngược bằng CFO gần đúng. Phần còn dư nhỏ: dư 1 Hz × 10 block × 288 mẫu / 48000 = 0.06 vòng ≈ 22° cho cả đoạn, nên hai pilot liền nhau (cách 2.2°) không bao giờ lệch tới ±180° và <code>unwrap</code> không có gì để nhảy sai. Nếu có nhảy, chuỗi pha chỉ dài 10 điểm và độ dốc sai chỉ áp lên đoạn đó. Ở bước 5, pha preamble <strong>chưa</strong> được xoay ngược CFO nào, và chuỗi dài 50 điểm. Một mẫu méo ở đó làm <code>unwrap</code> nhảy sai 360° thì cả phần sau lệch theo (5a, mục 5), nên code dùng hiệu liền kề + trung bình vectơ.</p>
+<h3 id="d.chon-lech-vi-tri-2-mau-theo-o-ong-pha">6d. Chọn lệch vị trí ±2 mẫu theo độ đồng pha</h3>
+<p>Code thử dịch cả đoạn <code>dd</code> ∈ {0, −1, +1, −2, +2} mẫu. Với mỗi <code>dd</code> nó tính:</p>
+<p><code>coh = |tổng các z| / tổng các |z|</code></p>
+<p>trong đó z là giá trị pilot sau khi xoay ngược CFO. Nếu mọi pilot cùng pha thì <code>coh</code> = 1. Nếu lấy mẫu lệch sang ký hiệu bên cạnh thì các pilot bị kéo lệch mỗi cái một kiểu và <code>coh</code> &lt; 1.</p>
+<p>Độ lợi 0.4 và pha chung 20° không làm đổi <code>coh</code>, nên tính với biên độ 1:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>block 1 (ký hiệu sau = 1∠135°)</th>
+<th>block 2 (sau = 1∠45°)</th>
+<th>block 3 (sau = 1∠−45°)</th>
+<th>|tổng|</th>
+<th>tổng |z|</th>
+<th><strong>coh</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dd = 0</td>
+<td>1∠45°</td>
+<td>1∠45°</td>
+<td>1∠45°</td>
+<td>3.0</td>
+<td>3.0</td>
+<td><strong>1.000</strong></td>
+</tr>
+<tr>
+<td>dd = +1 (3 mẫu pilot + 1 mẫu ký hiệu sau)</td>
+<td>0.79∠63.4°</td>
+<td>1∠45°</td>
+<td>0.79∠26.6°</td>
+<td>2.50</td>
+<td>2.58</td>
+<td><strong>0.969</strong></td>
+</tr>
+</tbody>
+</table>
+<p>→ chọn <code>dd = 0</code>.</p>
+<p>Ở <strong>block 2</strong>, lệch +1 mẫu vẫn cho đúng 1∠45°, vì ký hiệu sau trùng pilot. Nhìn riêng một block thì không phân biệt được lệch hay không. Đó là lý do code không dùng <code>max|mf|</code> từng block mà lấy độ đồng pha của cả đoạn.</p>
+<p><strong>Lệch về phía trước, <code>dd = −1</code></strong> (1 mẫu của ký hiệu <em>trước</em> + 3 mẫu pilot). Ký hiệu trước pilot block 1 là ký hiệu cuối preamble, +1 = 1∠0°; trước block 2 là 1∠−135°; trước block 3 là 1∠−45°:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>block 1 (trước = 1∠0°)</th>
+<th>block 2 (trước = 1∠−135°)</th>
+<th>block 3 (trước = 1∠−45°)</th>
+<th>|tổng|</th>
+<th>tổng |z|</th>
+<th><strong>coh</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dd = −1</td>
+<td>(3∠45° + 1∠0°)/4 = 0.943∠34.2°</td>
+<td>(3∠45° + 1∠−135°)/4 = 0.5∠45°</td>
+<td>(3∠45° + 1∠−45°)/4 = 0.79∠26.6°</td>
+<td>2.22</td>
+<td>2.23</td>
+<td><strong>0.993</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Ở block 2, ký hiệu trước <strong>ngược hẳn</strong> pilot (lệch 180°), nên theo (C2) nó chỉ trừ bớt biên độ (1 → 0.5) mà <strong>không làm lệch pha</strong>. Đây thêm một kiểu &quot;nhìn một block không thấy lệch&quot;. <code>coh</code> = 0.993 sát 1 hơn <code>dd = +1</code>, vì lần này hai block lệch pha cùng một phía (34°, 27°), ít tản hơn. Nhưng vẫn &lt; 1, nên <code>dd = 0</code> thắng. Càng nhiều block trong đoạn (M = 10 ở code thật), dữ liệu ngẫu nhiên càng làm các pha lệch tản ra, và khoảng cách giữa <code>coh</code> của vị trí đúng và vị trí sai càng rõ.</p>
+<h3 id="e.sang-oan-sau">6e. Sang đoạn sau</h3>
+<p><code>p0 = p0 + m*spb*(1+drift) + dbest</code> dời tới pilot đầu của đoạn kế tiếp. Nó giữ phần lẻ (số thực) và mang theo phần chỉnh <code>dbest</code>.</p>
+<p>Kết quả của bước 6: <code>pilot_idx</code> (vị trí mẫu pilot từng block) và <code>cfo_blk</code> (CFO từng block).</p>
+<hr />
+<h2 id="buoc-7-can-bang-bang-pilot-va-quyet-inh-bit-dong-163187">Bước 7: cân bằng bằng pilot và quyết định bit (dòng 163–187)</h2>
+<p><strong>Input → Output</strong> của bước này:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td><code>mfo(idx_c)</code> từng ký hiệu dữ liệu + <code>g</code> = <code>mfo(p)/pilot_sym</code> + <code>cb</code> = <code>cfo_blk</code> của đoạn</td>
+</tr>
+<tr>
+<td><strong>Output (lý thuyết — đồ chơi, block 1)</strong></td>
+<td><code>g</code> = 0.4∠85°; <code>eq_sym</code> = <strong>1∠135°</strong> và <strong>1∠−135°</strong> → bit <code>0 1</code>, <code>0 0</code> (bảng ở bước 7)</td>
+</tr>
+<tr>
+<td><strong>Output (thực tế — cáp thật)</strong></td>
+<td><code>eq_sym</code> rơi gần đúng 4 điểm constellation, độ tản ≈ 6% RMS (1000 baud) hoặc ≈ 15% (4000 baud, sps = 12). BER: <strong>0/2000</strong> (1000 baud), <strong>0/64000</strong> (audio 1 s), <strong>2/192000</strong> (audio 3 s, EVM 14.6%)</td>
+</tr>
+</tbody>
+</table>
+<p>Xét <strong>block 1</strong> trong đồ chơi, <code>p = 14</code>, <code>cb = 5 Hz</code>.</p>
+<p><strong><code>g = mfo(p) / pilot_sym</code></strong> = 0.4∠130° / 1∠45° = <strong>0.4∠85°</strong>. Đây là &quot;hệ số kênh&quot; tại pilot: gồm độ lợi 0.4, pha kênh 20°, và pha CFO tích lũy tới mẫu 14 (65°).</p>
+<p>Với từng ký hiệu dữ liệu b = 1, 2:</p>
+<ul>
+<li><strong><code>idx_c = p + b*sps + round(drift*b*sps)</code></strong>: ký hiệu thứ b nằm sau pilot <code>b·sps</code> mẫu. Phần drift ≈ 0 trong đồ chơi. Với số thật, ở 4000 baud (sps = 12) ký hiệu xa nhất là b = 5, tức 60 mẫu sau pilot: 0.3% × 60 ≈ 0.18, làm tròn về 0. Nhưng ở 1000 baud (sps = 48) thì 0.3% × 5 × 48 = 0.72, <code>round</code> ra <strong>1 mẫu</strong>. Tức ký hiệu thứ 5 của mỗi block được lấy mẫu muộn hơn 1 mẫu so với <code>p + 5·sps</code>. <code>min(..., L)</code> chặn để không vượt cuối bản thu.</li>
+<li><strong><code>eq_sym = mfo(idx_c) * exp(-1j*2*pi*cb*(idx_c-p)/Fs) / g</code></strong>: xoay ngược phần CFO <strong>từ pilot tới ký hiệu này</strong>, rồi chia g.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>b</th>
+<th>idx_c</th>
+<th><code>mfo(idx_c)</code></th>
+<th>xoay ngược 5°·(idx_c−14)</th>
+<th>/ 0.4∠85°</th>
+<th>bit (I&gt;0, Q&gt;0)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>18</td>
+<td>0.4∠(135+20+85) = 0.4∠240°</td>
+<td>−20° → 0.4∠220°</td>
+<td><strong>1∠135°</strong> ✓</td>
+<td>0 1 ✓</td>
+</tr>
+<tr>
+<td>2</td>
+<td>22</td>
+<td>0.4∠(−135+20+105) = 0.4∠−10°</td>
+<td>−40° → 0.4∠−50°</td>
+<td><strong>1∠−135°</strong> ✓</td>
+<td>0 0 ✓</td>
+</tr>
+</tbody>
+</table>
+<p>Phép chia cho g vừa đưa biên độ về 1, vừa xóa mọi pha chung (pha kênh 20° và pha CFO tới pilot). QPSK cần điều này vì bit nằm trong pha. Quyết định bit rất đơn giản: <code>real &gt; 0</code> cho bit 1 của cặp, <code>imag &gt; 0</code> cho bit 2.</p>
+<p><code>block_timing</code> chỉ dùng để in: vị trí pilot tìm được trừ vị trí danh nghĩa khi không lệch đồng hồ. Trên cáp thật con số này tăng dần (ví dụ 4 → 179 mẫu), cho thấy trực tiếp đồng hồ đang trôi.</p>
+<hr />
+<h2 id="buoc-8-anh-gia-dong-195218">Bước 8: đánh giá (dòng 195–218)</h2>
+<p><strong>Input → Output</strong> của bước này:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td><code>rx_bits</code> (bit chốt) + <code>data_bits</code> (bit gốc từ <code>.mat</code>) + <code>eq_all</code> (tất cả ký hiệu đã cân bằng) + <code>ideal</code> (4 điểm QPSK chuẩn)</td>
+</tr>
+<tr>
+<td><strong>Output (lý thuyết — đồ chơi)</strong></td>
+<td><strong>BER = 0/12</strong>; EVM ≈ 0%. Ví dụ có nhiễu (mục 8): một điểm lệch 0.130 → EVM ≈ 9.2%</td>
+</tr>
+<tr>
+<td><strong>Output (thực tế — cáp thật)</strong></td>
+<td>in ra BER, EVM, <code>block_timing</code>: 1000 baud → BER 0/2000, EVM 6.2%; audio 1 s → 0/64000; audio 3 s → 2/192000, EVM 14.6%; loopback → BER 0, EVM ≈ 0%. Pattern <code>block_err</code> phân biệt lỗi nhiễu (rải đều) vs lỗi lệch đồng hồ (tăng về cuối)</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>biterr(data_bits, rx_bits)</code></strong> đếm số bit sai so với bit gốc trong <code>.mat</code>. Đồ chơi: 0/12.</p>
+<p><strong>BER = 0 không có nghĩa là BER thật bằng 0.</strong> Nó chỉ nói BER thật nhỏ hơn khoảng <strong>3 / số bit</strong> (quy tắc &quot;3 trên n&quot;, độ tin cậy 95%):</p>
+<table>
+<thead>
+<tr>
+<th>lần chạy</th>
+<th>số bit</th>
+<th>BER = 0 chỉ nói được</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>đồ chơi</td>
+<td>12</td>
+<td>BER &lt; 0.25 (gần như không nói gì)</td>
+</tr>
+<tr>
+<td><code>Tx_qpsk.m</code> 200 block</td>
+<td>2000</td>
+<td>BER &lt; 1.5·10⁻³</td>
+</tr>
+<tr>
+<td>audio 1 s</td>
+<td>64000</td>
+<td>BER &lt; 4.7·10⁻⁵</td>
+</tr>
+</tbody>
+</table>
+<p>Vì thế bản audio 3 s ra 2/192000 (≈ 1·10⁻⁵) không mâu thuẫn với hai bản 1 s ra 0/64000: với BER ≈ 1·10⁻⁵, trung bình cứ 64000 bit mới sai 0.6 bit.</p>
+<p><strong>EVM</strong> đo độ tản của chòm sao. Mỗi điểm được so với điểm QPSK gần nhất. Ví dụ, thêm nhiễu làm điểm thứ hai lệch:</p>
+<table>
+<thead>
+<tr>
+<th><code>eq_all</code></th>
+<th><code>ideal</code></th>
+<th>|sai lệch|</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1∠135°</td>
+<td>1∠135°</td>
+<td>0</td>
+</tr>
+<tr>
+<td>0.9∠50°</td>
+<td>1∠45°</td>
+<td>0.130</td>
+</tr>
+</tbody>
+</table>
+<p>|sai lệch| của hàng 2 tính bằng định lý cos (hai mũi tên dài 0.9 và 1, kẹp góc 5°): √(0.9² + 1² − 2·0.9·1·cos 5°) = √(1.81 − 1.793) = √0.0169 = <strong>0.130</strong>.</p>
+<p>EVM = rms(0, 0.130) / rms(1, 1) = √(0.130²/2) = <strong>9.2%</strong>, tức SNR ≈ −20·log10(0.092) ≈ <strong>20.7 dB</strong>.</p>
+<p>EVM có ích hơn BER khi BER = 0: nó cho biết còn cách ngưỡng lỗi bao xa. Số thật: loopback ≈ 0%, cáp ở 1000 baud ≈ 6%, ở 4000 baud ≈ 15%.</p>
+<blockquote>
+<p><strong>Dễ nhầm:</strong> <code>ideal = (sign(real) + j·sign(imag))/√2</code> là điểm chòm sao <strong>gần nhất</strong>, không phải điểm Tx đã gửi. Một ký hiệu bị nhiễu đẩy qua trục (bit sai) được so với điểm <em>sai</em> gần nó, nên sai lệch tính ra nhỏ hơn thật. Ví dụ: gửi 1∠45° nhận 0.3∠−10° thì <code>ideal</code> = 1∠−45°. Vì vậy khi có nhiều bit sai, EVM in ra đánh giá thấp độ tản thật. Khi BER ≈ 0 (trường hợp thường gặp ở đây) thì không ảnh hưởng.</p>
+</blockquote>
+<p><strong>In kết quả theo độ dài khung.</strong> Khung ≤ 300 block (<code>Tx_qpsk.m</code>, 200 block): code in <code>block_timing</code> và <code>block_err</code> của <strong>từng block</strong>. Khung dài hơn (audio 6400 / 19200 block): chỉ in <code>block_timing</code> ở đầu / giữa / cuối, và số block có lỗi kèm block lỗi đầu tiên.</p>
+<p><strong><code>block_err</code></strong> là số bit sai trong từng block:</p>
+<ul>
+<li>lỗi rải đều các block → do nhiễu;</li>
+<li>lỗi tăng dần về cuối khung → do lệch đồng hồ chưa bù được.</li>
+</ul>
+<hr />
+<h2>Đồ thị (dòng 221–223)</h2>
+<p>Code vẽ 2 hình. Cách đọc:</p>
+<p><strong><code>scatterplot(eq_all)</code></strong>: chòm sao các ký hiệu dữ liệu sau cân bằng.</p>
+<table>
+<thead>
+<tr>
+<th>thấy gì</th>
+<th>nghĩa là</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4 cụm gọn ở 1∠45°, 1∠135°, 1∠−135°, 1∠−45°</td>
+<td>tốt. Độ rộng mỗi cụm chính là EVM</td>
+</tr>
+<tr>
+<td>4 cụm gọn nhưng <strong>xoay</strong> lệch khỏi 45°</td>
+<td>còn pha chưa sửa. Khó gặp, vì chia <code>g</code> đã xóa pha chung từng block</td>
+</tr>
+<tr>
+<td>mỗi cụm kéo thành <strong>cung tròn</strong></td>
+<td>CFO dư: ký hiệu càng xa pilot trong block càng xoay nhiều</td>
+</tr>
+<tr>
+<td>cụm <strong>nhòe</strong> về phía gốc tọa độ / lẫn sang cụm bên</td>
+<td>lấy mẫu lệch sang ký hiệu kề (timing sai, xem bảng 3c)</td>
+</tr>
+<tr>
+<td>một đám tròn không có cụm</td>
+<td>mất đồng bộ (bước 4) hoặc ghép nhầm <code>.mat</code> với <code>.wav</code> → BER ≈ 0.5</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>plot(real(rx_bb))</code></strong>: thành phần I của baseband theo mẫu, <strong>trước</strong> lọc phối hợp. Dùng để nhìn bằng mắt: đoạn im lặng ở đầu/cuối, chỗ khung bắt đầu, biên độ thu có đủ lớn không. Không dùng để đọc ký hiệu, vì rác 2·Fc (bước 2) còn nguyên trong hình.</p>
+<hr />
+<h2 id="tom-tat-chuoi">Tóm tắt chuỗi</h2>
+<pre><code>rx_raw (thực, Fs)
+ └─ × 1∠(−2π·Fc·t)          → rx_bb     ký hiệu ở 0 Hz + rác ở 2Fc
+    └─ trung bình sps mẫu   → mf_out    rác bị khử; mẫu tốt = đầu ký hiệu + sps/2 − 1
+       └─ xcorr + quét CFO  → start_idx đầu preamble
+          └─ pha preamble   → cfo_hz    (bước giữa 2 ký hiệu liền nhau)
+             └─ mỗi đoạn 10 block: đoán p, chỉnh CFO (độ dốc pha pilot), chọn ±2 mẫu (coh)
+                                → pilot_idx, cfo_blk
+                └─ mỗi block: g = pilot/pilot_sym; ký hiệu = mf·(xoay ngược CFO)/g → dấu I, Q → bit
+                   └─ BER, EVM, lỗi từng block
+</code></pre>
+
+</body>
+</html>
